@@ -6,6 +6,13 @@
 
 Independent community project. Not affiliated with or endorsed by Broadcom or VMware.
 
+**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.1.0)**
+
+This is a preview release for Windows 10/11 x64. Python/Tk are included in the
+installer; VMware OVF Tool is a separate requirement. The installer is unsigned,
+and clean-machine installation/live VMware validation remain release checks.
+macOS and Linux downloads are not available yet.
+
 ## Features
 
 - Compact export dashboard; select a task to see its full progress and speed history.
