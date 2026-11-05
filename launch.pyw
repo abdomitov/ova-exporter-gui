@@ -1,6 +1,8 @@
 """Windowed launcher with a visible startup error instead of a silent exit."""
 try:
     import sys
+    from pathlib import Path
+    sys.path.insert(0,str(Path(__file__).resolve().parent/'src'))
     if '--self-test-report' in sys.argv:
         import json
         from pathlib import Path

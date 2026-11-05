@@ -14,8 +14,9 @@ from tool_paths import find_ovftool
 from jobs import JobManager
 from wizard import ExportWizard
 from branding import set_icon
+from project_paths import ROOT
 
-BASE = Path(__file__).resolve().parent
+BASE = ROOT
 STOP_WARNING = ('Interrupting an export may leave the VM locked on ESXi and unable to power on or export again. '
                 'An administrator may need to restart hostd, which can affect host management and other tasks.\n\n'
                 'Any partial OVA remains incomplete and cannot be resumed. The app will not restart ESXi services.')

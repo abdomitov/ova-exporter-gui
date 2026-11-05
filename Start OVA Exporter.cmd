@@ -3,9 +3,9 @@ setlocal
 cd /d "%~dp0"
 where py >nul 2>nul
 if not errorlevel 1 (
-    py -3 app.py
+    py -3 launch.pyw
 ) else (
-    python app.py
+    python launch.pyw
 )
 if errorlevel 1 (
     echo.

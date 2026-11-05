@@ -10,7 +10,7 @@ The lead coordinated independent QA, design/accessibility and security/deploymen
 reviews. Production changes were owned by the lead; QA owned test changes.
 Reviewed startup/configuration, certificate review, login/session handling,
 inventory selection, filename validation, scheduler, progress, verification,
-cancellation/exit, encrypted hints, and source packaging. See REVIEW_PLAN.md.
+cancellation/exit, encrypted hints, and source packaging. The review covered the core user journeys end to end.
 Only fake clients, fake UI data and temporary local files were used. No real
 VMware login, export, VM power operation or host-service restart was performed.
 
@@ -83,7 +83,7 @@ From the extracted project folder in PowerShell:
 py -3 tools/offline_tests.py
 py -3 tools/preview_ui.py --check
 py -3 tools/package_source.py
-py -3 app.py
+py -3 launch.pyw
 ```
 
 Install Python 3.10+ with Tkinter and the Windows launcher, then install VMware

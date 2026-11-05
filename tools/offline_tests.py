@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+sys.path.insert(0,str(ROOT/'src'))
 
 
 def denied(*args, **kwargs):
@@ -31,7 +32,7 @@ def run():
             denied()
         original(self,directory,protector)
     ConnectionSettings.__init__ = isolated_settings
-    suite=unittest.defaultTestLoader.discover(str(ROOT),pattern='test_*.py')
+    suite=unittest.defaultTestLoader.discover(str(ROOT/'tests'),pattern='test_*.py')
     result=unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 

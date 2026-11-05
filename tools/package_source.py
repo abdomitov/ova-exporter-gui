@@ -5,27 +5,30 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT/"src"))
 from metadata import VERSION
 
 ROOT_FILES = (
-    'app.py', 'wizard.py', 'dashboard.py', 'task_view.py', 'transfer_ui.py', 'branding.py',
-    'theme.py', 'ui_assets.py', 'accordion.py', 'jobs.py', 'exporter.py',
-    'vsphere.py', 'diagnostics.py', 'connection_settings.py', 'secure_storage.py', 'tool_paths.py', 'output_paths.py',
-    'metadata.py', 'launch.pyw', 'Start OVA Exporter.cmd', 'Start OVA Exporter.vbs',
-    'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
-    'CONTRIBUTING.md', 'SECURITY.md', '.gitignore', '.gitattributes', 'pyproject.toml',
-    'test_app.py', 'test_cancellation.py', 'test_connection_settings.py',
-    'test_jobs.py', 'test_ui.py', 'requirements-build.txt',
+    'launch.pyw', 'Start OVA Exporter.cmd', 'Start OVA Exporter.vbs',
+    'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'CONTRIBUTING.md',
+    'SECURITY.md', '.gitignore', '.gitattributes', 'pyproject.toml', 'requirements-build.txt',
 )
-EXTRA_FILES = (
-    'tools/preview_ui.py', 'tools/package_source.py', 'tools/offline_tests.py',
-    'docs/ARCHITECTURE.md', 'docs/PUBLISHING.md', 'docs/VALIDATION.md',
-    '.github/ISSUE_TEMPLATE/bug_report.md', '.github/PULL_REQUEST_TEMPLATE.md',
-    '.github/workflows/offline-tests.yml', 'docs/REVIEW_PLAN.md', 'docs/RELEASE_REVIEW.md',
-    'tools/make_icons.py', 'tools/runtime_licenses.py', 'tools/build_windows.ps1', 'tools/publish_github.ps1',
-    'assets/logo.svg', 'assets/logo.png', 'assets/app.ico',
-    'packaging/windows.iss', 'packaging/installer-notes.txt', 'docs/WINDOWS_INSTALLER.md',
+APP_FILES = tuple('src/'+name for name in (
+    'accordion.py','app.py','branding.py','connection_settings.py','dashboard.py',
+    'diagnostics.py','exporter.py','jobs.py','metadata.py','output_paths.py',
+    'project_paths.py','secure_storage.py','task_view.py','theme.py','tool_paths.py',
+    'transfer_ui.py','ui_assets.py','vsphere.py','wizard.py',
+))
+TEST_FILES = tuple('tests/'+name for name in (
+    'test_app.py','test_cancellation.py','test_connection_settings.py','test_jobs.py','test_ui.py',
+))
+EXTRA_FILES = APP_FILES+TEST_FILES+(
+    'tools/preview_ui.py','tools/package_source.py','tools/offline_tests.py',
+    'tools/make_icons.py','tools/runtime_licenses.py','tools/build_windows.ps1',
+    'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/WINDOWS_INSTALLER.md',
+    '.github/ISSUE_TEMPLATE/bug_report.md','.github/PULL_REQUEST_TEMPLATE.md',
+    '.github/workflows/offline-tests.yml','assets/logo.svg','assets/logo.png','assets/app.ico',
+    'packaging/windows.iss','packaging/installer-notes.txt',
 )
 OPTIONAL_IMAGES = ('docs/images/dashboard-dark.jpg', 'docs/images/dashboard-light.jpg',
                    'docs/images/dashboard-compact.jpg', 'docs/images/new-export-dark.jpg',

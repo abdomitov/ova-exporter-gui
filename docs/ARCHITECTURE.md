@@ -1,5 +1,9 @@
 # Architecture
 
+Application modules below live in `src/`; regression tests live in `tests/`.
+Run the app from the repository root with `py -3 launch.pyw`.
+`src/project_paths.py` locates icons and resources in source/frozen builds.
+
 | Module | Responsibility |
 | --- | --- |
 | `app.py` | Application lifecycle, task actions, exit confirmation, event polling |

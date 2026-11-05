@@ -6,7 +6,9 @@
 
 Independent community project. Not affiliated with or endorsed by Broadcom or VMware.
 
-**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.1.0)**
+**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.1.0/OVA-Exporter-GUI-2.1.0-Windows-x64-Setup.exe)**
+
+[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.1.0)
 
 This is a preview release for Windows 10/11 x64. Python/Tk are included in the
 installer; VMware OVF Tool is a separate requirement. The installer is unsigned,
@@ -65,7 +67,7 @@ VMware OVF Tool is installed separately. See [installer details](docs/WINDOWS_IN
 If Windows Script Host is unavailable, use **Start OVA Exporter.cmd** or:
 
 ```powershell
-py -3 app.py
+py -3 launch.pyw
 ```
 
 OVF Tool is located in this order: `OVFTOOL_PATH`, a private `ovftool/ovftool.exe` beside the app, the standard VMware installation under Program Files, then `PATH`. The public source archive contains no VMware executable or DLL.
@@ -77,7 +79,7 @@ For a custom installation, set the executable path before launching:
 
 ```powershell
 $env:OVFTOOL_PATH = 'D:\Tools\VMware OVF Tool\ovftool.exe'
-py -3 app.py
+py -3 launch.pyw
 ```
 
 ## Export a VM
@@ -133,7 +135,9 @@ py -3 tools/preview_ui.py
 
 It injects in-memory settings, fake VM inventory and progress, and blocks socket connections and subprocess creation. It cannot export a VM or save connection settings.
 
-See [publishing and free discovery](docs/PUBLISHING.md) for repository metadata, release preparation and realistic search expectations.
+The repository keeps application code in `src/`, regression tests in `tests/`,
+build helpers in `tools/`, installer configuration in `packaging/`, and user/developer
+documentation in `docs/`. End users only need the installer download.
 
 ## License
 

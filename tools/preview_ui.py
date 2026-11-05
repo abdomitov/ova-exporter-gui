@@ -12,6 +12,7 @@ from pathlib import Path
 from tkinter import messagebox
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'src'))
 
 
 def blocked(*args, **kwargs):
