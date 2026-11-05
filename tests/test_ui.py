@@ -18,9 +18,50 @@ class UITests(unittest.TestCase):
         settings.migrate_legacy.return_value=[]
         guard=patch('app.ConnectionSettings',return_value=settings)
         guard.start();self.addCleanup(guard.stop)
+        tool_guard=patch('app.find_ovftool',return_value=Path(__file__))
+        tool_guard.start();self.addCleanup(tool_guard.stop)
 
     def vm(self,index=1):
         return {'id':str(index),'name':f'VM {index}','power':'poweredOff','cpu':'4','ram':'8192','capacity':1024**3,'path':'[DS] test.vmx'}
+
+    def test_missing_tool_blocks_new_export_without_creating_wizard(self):
+        root=tk.Tk();root.withdraw()
+        self.addCleanup(lambda:close_root(root))
+        app=App(root,tool_store=False,tool_locator=lambda *args:None)
+        self.assertIn('missing',app.tool_status.get())
+        self.assertEqual(app.tool_label['style'],'Error.TLabel')
+        with patch('app.messagebox.showerror') as warning:
+            app.new_download()
+            warning.assert_called_once()
+        self.assertIsNone(app.wizard)
+
+    def test_custom_tool_can_be_selected_remembered_and_redetected(self):
+        import tempfile
+        from tool_paths import find_ovftool
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'ovftool.exe';path.write_bytes(b'not executable; fixture only')
+            root=tk.Tk();root.withdraw()
+            self.addCleanup(lambda:close_root(root))
+            store=Mock();store.read.return_value=None
+            app=App(root,tool_store=store,tool_locator=lambda base,selected:Path(selected) if selected else None)
+            with patch('app.filedialog.askopenfilename',return_value=str(path)):
+                app.choose_tool()
+            self.assertEqual(app.manager.tool,path)
+            store.save.assert_called_once_with(path)
+            self.assertEqual(app.tool_label['style'],'Success.TLabel')
+            app.auto_tool()
+            store.save.assert_called_with(None)
+            self.assertFalse(app.refresh_tool())
+
+    def test_tool_cannot_change_during_active_or_queued_exports(self):
+        root=tk.Tk();root.withdraw()
+        self.addCleanup(lambda:close_root(root))
+        app=App(root,tool_store=False)
+        app.manager.add(self.client(),self.vm(),Path('tool-selection-test.ova'))
+        original=app.manager.tool
+        with patch('app.messagebox.showinfo') as warning,patch('app.filedialog.askopenfilename') as browse:
+            app.choose_tool();warning.assert_called_once();browse.assert_not_called()
+        self.assertEqual(app.manager.tool,original)
 
     def client(self):
         return SimpleNamespace(authority='preview.local',product='VMware',logout=Mock(),cookie='secret-cookie')

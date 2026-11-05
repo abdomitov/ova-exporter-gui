@@ -3,14 +3,15 @@ import queue
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
+import webbrowser
 
 from accordion import install_mousewheel
 from connection_settings import ConnectionSettings
 from dashboard import Dashboard
 from metadata import APP_NAME, VERSION
 from theme import ThemeManager
-from tool_paths import find_ovftool
+from tool_paths import find_ovftool, ToolLocation, tool_file_exists
 from jobs import JobManager
 from wizard import ExportWizard
 from branding import set_icon
@@ -23,7 +24,7 @@ STOP_WARNING = ('Interrupting an export may leave the VM locked on ESXi and unab
 
 
 class App:
-    def __init__(self, root, *, settings=None, remember_theme=True):
+    def __init__(self, root, *, settings=None, remember_theme=True, tool_store=None, tool_locator=None):
         self.root=root
         self.events=queue.Queue()
         self.wizard=None
@@ -41,6 +42,15 @@ class App:
         root.minsize(640,420)
         directory=getattr(self.settings, 'directory', None)
         preference=directory/'appearance.json' if remember_theme and isinstance(directory, Path) else None
+        self.tool_store=(ToolLocation(directory) if isinstance(directory,Path) else None) if tool_store is None else tool_store or None
+        self.tool_locator=tool_locator or find_ovftool
+        self.selected_tool=None
+        self.tool_storage_error=''
+        if self.tool_store is not None:
+            try:
+                self.selected_tool=self.tool_store.read()
+            except (OSError,ValueError,TypeError,UnicodeError) as error:
+                self.tool_storage_error='Saved tool location could not be read; select it again.'
         self.theme=ThemeManager(root, preference)
         outer=ttk.Frame(root,padding=(20,16))
         self.outer=outer
@@ -58,9 +68,19 @@ class App:
         ttk.Label(titles,text='VMware OVF Tool, made visual',style='Muted.TLabel').pack(anchor='w',pady=(2,0))
         self.theme_button=ttk.Button(header,command=self.toggle_theme,style='Quiet.TButton')
         self.theme_button.pack(side='right',padx=(10,0))
-        self.caption=tk.StringVar(value='Your exports, in one place. Select a task to see its transfer details.')
-        self.tool_path=find_ovftool(BASE)
+        self.caption=tk.StringVar(value=self.tool_storage_error or 'Your exports, in one place. Select a task to see its transfer details.')
+        self.tool_path=self.tool_locator(BASE,self.selected_tool)
         self.manager=JobManager(self.tool_path or BASE/'ovftool'/'ovftool.exe',self.emit)
+        self.tool_bar=ttk.Frame(outer)
+        self.tool_bar.pack(fill='x',pady=(0,8))
+        self.tool_status=tk.StringVar()
+        self.tool_label=ttk.Label(self.tool_bar,textvariable=self.tool_status,wraplength=260)
+        self.tool_label.pack(side='left',fill='x',expand=True)
+        self.tool_browse=ttk.Button(self.tool_bar,text='Locate OVF Tool…',command=self.choose_tool)
+        self.tool_browse.pack(side='left',padx=(8,4))
+        self.tool_auto=ttk.Button(self.tool_bar,text='Auto-detect',command=self.auto_tool)
+        self.tool_auto.pack(side='left')
+        self.tool_download=ttk.Button(self.tool_bar,text='Download',command=lambda:webbrowser.open('https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/'))
         self.dashboard=Dashboard(outer,self.new_download,self.cancel_job,self.open_log,theme=self.theme)
         self.dashboard.pack(fill='both',expand=True)
         footer=ttk.Frame(outer)
@@ -70,6 +90,7 @@ class App:
         self.caption_label.pack(side='left',anchor='w')
         ttk.Label(footer,text=f'v{VERSION} · Passwords never saved',style='Footnote.TLabel').pack(side='right',padx=(10,0))
         self.theme.register(self)
+        self.refresh_tool()
         root.bind('<Configure>', self.resize_layout, add='+')
         self.refresh_wheel=install_mousewheel(root)
         root.protocol('WM_DELETE_WINDOW',self.close)
@@ -89,6 +110,7 @@ class App:
         self.outer.configure(padding=(12,10) if compact else (20,16))
         self.header.pack_configure(pady=(0,8) if compact else (0,14))
         self.caption_label.configure(wraplength=max(250,min(600,width-270)))
+        self.tool_label.configure(wraplength=max(150,width-430))
         self.theme.style.configure('Title.TLabel',font=('Segoe UI',17 if width<800 else 20,'bold'))
         self.theme.style.configure('Metric.TLabel',font=('Segoe UI',16 if width<800 else 19,'bold'))
         self.dashboard.fit_compact(self.root.winfo_height())
@@ -102,9 +124,60 @@ class App:
     def emit(self,kind,payload):
         self.events.put((kind,payload))
 
+    def refresh_tool(self):
+        busy=bool(self.manager.unfinished())
+        path=self.manager.tool if busy else self.tool_locator(BASE,self.selected_tool)
+        ready=tool_file_exists(path)
+        self.tool_path=Path(path) if path else None
+        if not busy:
+            self.manager.tool=self.tool_path or BASE/'ovftool'/'ovftool.exe'
+        self.tool_status.set('OVF Tool found · exports available' if ready else 'OVF Tool missing · exports blocked')
+        self.tool_label.configure(style='Success.TLabel' if ready else 'Error.TLabel')
+        if ready:
+            self.tool_download.pack_forget()
+        else:
+            self.tool_download.pack(side='left',padx=(4,0))
+        self.tool_browse.configure(state='disabled' if busy else 'normal')
+        self.tool_auto.configure(state='disabled' if busy else 'normal')
+        return ready
+
+    def choose_tool(self):
+        if self.manager.unfinished():
+            messagebox.showinfo('Exports active','Wait for all tasks to finish before changing OVF Tool.',parent=self.root)
+            return
+        chosen=filedialog.askopenfilename(parent=self.root,title='Select ovftool.exe in its installation folder',
+                    filetypes=[('VMware OVF Tool','ovftool.exe')],
+                    initialdir=str(self.tool_path.parent) if self.tool_path and self.tool_path.parent.is_dir() else None)
+        if not chosen:
+            return
+        path=Path(chosen)
+        if path.name.casefold()!='ovftool.exe' or not path.is_file():
+            messagebox.showerror('Invalid tool','Select the official ovftool.exe and leave its supporting DLLs/folders in place.',parent=self.root)
+            return
+        self.selected_tool=path
+        self.save_tool_location(path)
+        self.refresh_tool()
+
+    def save_tool_location(self,path):
+        if self.tool_store is not None:
+            try:
+                self.tool_store.save(path)
+            except (OSError,ValueError) as error:
+                messagebox.showwarning('Location not saved','The tool is available for this session, but its location could not be saved: '+str(error),parent=self.root)
+
+    def auto_tool(self):
+        if self.manager.unfinished():
+            return
+        self.selected_tool=None
+        self.save_tool_location(None)
+        self.refresh_tool()
+
     def new_download(self):
         if self.close_mode:
             self.root.bell()
+            return
+        if not self.refresh_tool():
+            messagebox.showerror('VMware OVF Tool is required','Install VMware OVF Tool, then click Auto-detect. For a custom folder, click Locate OVF Tool and select ovftool.exe. Keep its supporting files together.',parent=self.root)
             return
         if self.wizard and not self.wizard.closed:
             self.wizard.root.deiconify()
@@ -119,6 +192,7 @@ class App:
         self.dashboard.add(job)
         self.refresh_wheel()
         self.manager.start(job)
+        self.refresh_tool()
 
     def cancel_job(self,job_id):
         job=self.manager.jobs[job_id]
@@ -166,6 +240,7 @@ class App:
                 kind,payload=self.events.get_nowait()
                 if kind=='job':
                     self.dashboard.handle(*payload)
+                    self.refresh_tool()
         except queue.Empty:
             pass
         if self.close_mode and self.exit_dialog is None and (self.manager.local_tools_stopped() if self.close_mode=='force' else not self.manager.unfinished()):

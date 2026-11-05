@@ -1,5 +1,24 @@
 # Release review — 2026-11-05
 
+## 2.2.0 dependency-setup update
+
+The installer now displays the OVF Tool requirement before installation and at
+completion. The app checks for the executable at startup and before new export
+setup. Missing/inaccessible locations show a red status and block new exports.
+A custom ovftool.exe can be selected; its path is protected with current-user
+DPAPI. Auto-detect clears the custom selection and checks default folders/PATH.
+Tool changes are blocked while tasks are active. Existing export processes are
+not cancelled or restarted by these checks. Found status confirms file presence;
+it is not a complete DLL, version, compatibility or server-connectivity test.
+
+New offline regressions cover missing-tool blocking, custom selection/remembering,
+automatic recovery, active-task protection, encrypted persistence, environment
+override precedence and inaccessible files. The red banner and blocking message
+were visually inspected with fake data. No vendor binary is redistributed.
+The final guarded suite passes 83 tests, and the frozen executable's fake-only
+self-test passes. Clean-machine installer testing and real VMware validation
+remain outside these checks.
+
 Target: Windows users exporting powered-off VMware VMs to a local verified OVA.
 Decision: suitable for a source preview release after the local checks below;
 not certified for unrestricted production use without disposable-lab validation.

@@ -1,0 +1,16 @@
+REQUIRED: VMware OVF Tool
+
+OVA Exporter GUI needs VMware OVF Tool to export virtual machines. Python and
+Tk are included with this installer; VMware OVF Tool is licensed separately.
+
+After setup, open OVA Exporter GUI:
+- It automatically checks the standard VMware installation folders and PATH.
+- A green status means the executable was found.
+- A red status means OVF Tool is missing; new exports are blocked.
+- If it is in a different folder, click Locate OVF Tool and select ovftool.exe.
+- After installing the tool, click Auto-detect. No app restart is required.
+
+You can install OVF Tool in a custom directory. Keep its DLLs and supporting
+folders together. Moving just ovftool.exe can prevent it from working.
+
+Official download: https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/

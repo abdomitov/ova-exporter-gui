@@ -28,11 +28,11 @@ EXTRA_FILES = APP_FILES+TEST_FILES+(
     'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/WINDOWS_INSTALLER.md',
     '.github/ISSUE_TEMPLATE/bug_report.md','.github/PULL_REQUEST_TEMPLATE.md',
     '.github/workflows/offline-tests.yml','assets/logo.svg','assets/logo.png','assets/app.ico',
-    'packaging/windows.iss','packaging/installer-notes.txt',
+    'packaging/windows.iss','packaging/installer-notes.txt','packaging/tool-requirement.txt',
 )
 OPTIONAL_IMAGES = ('docs/images/dashboard-dark.jpg', 'docs/images/dashboard-light.jpg',
                    'docs/images/dashboard-compact.jpg', 'docs/images/new-export-dark.jpg',
-                   'docs/images/vm-selection-dark.jpg')
+                   'docs/images/vm-selection-dark.jpg','docs/images/tool-missing.jpg')
 
 
 def build():

@@ -17,6 +17,7 @@ ovftool/
 connections.json
 trusted_servers.json
 appearance.json
+tool_location.json
 PREVIEW-NO-SETTINGS/
 *.log
 .env

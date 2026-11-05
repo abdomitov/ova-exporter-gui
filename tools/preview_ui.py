@@ -70,10 +70,13 @@ def machine(index, name, power='poweredOff'):
 
 class PreviewApp(application.App):
     def __init__(self, root):
-        super().__init__(root, settings=MemorySettings(), remember_theme=False)
+        super().__init__(root, settings=MemorySettings(), remember_theme=False,
+                         tool_store=False,tool_locator=lambda base,selected=None: Path(sys.executable))
         root.title('OVA Exporter GUI — FAKE DATA PREVIEW')
         self.manager.start = blocked
         self.manager.export = blocked
+        self.tool_download.configure(command=self.preview_notice)
+        self.tool_browse.configure(command=self.preview_notice)
         self.jobs = []
         for index, (name, host, phase, percent) in enumerate([
             ('Atlas Maps', '192.0.2.10', 'running', 46),
@@ -154,6 +157,19 @@ class PreviewApp(application.App):
         print('PASS: fake dashboard + wizard; two themes; graph; statistics; narrow layouts; keyboard binding; powered-off filter', flush=True)
         if '--check' in sys.argv:
             self.finish_close()
+        elif '--missing-tool' in sys.argv:
+            self.dashboard.tree.delete(*self.dashboard.tree.get_children())
+            self.dashboard.cards.clear()
+            self.dashboard.selected=None
+            self.dashboard.hide_details()
+            self.dashboard.cancel_selected.pack_forget()
+            self.dashboard.log_button.configure(state='disabled')
+            self.dashboard.update_summary()
+            self.manager.jobs.clear()
+            self.manager.waiting.clear()
+            self.tool_locator=lambda *args:None
+            self.refresh_tool()
+            self.dashboard.empty.place(relx=0.5,rely=0.5,anchor='center')
         elif '--compact' in sys.argv:
             self.root.geometry('640x420')
         elif '--wizard-connect' in sys.argv or '--wizard-selection' in sys.argv:

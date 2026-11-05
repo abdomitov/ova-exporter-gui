@@ -6,9 +6,9 @@
 
 Independent community project. Not affiliated with or endorsed by Broadcom or VMware.
 
-**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.1.0/OVA-Exporter-GUI-2.1.0-Windows-x64-Setup.exe)**
+**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.2.0/OVA-Exporter-GUI-2.2.0-Windows-x64-Setup.exe)**
 
-[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.1.0)
+[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.2.0)
 
 This is a preview release for Windows 10/11 x64. Python/Tk are included in the
 installer; VMware OVF Tool is a separate requirement. The installer is unsigned,
@@ -19,6 +19,7 @@ macOS and Linux downloads are not available yet.
 
 - Compact export dashboard; select a task to see its full progress and speed history.
 - Light and dark themes, resizable windows, keyboard navigation and mouse-wheel scrolling.
+- Startup OVF Tool detection, red missing-tool alert, and a custom-location picker.
 - ESXi and vCenter connections with a fresh password for each new setup session.
 - Powered-off VM filter, search, destination selection and filename validation.
 - Up to three concurrent exports across server addresses; one active export per address.
@@ -36,6 +37,8 @@ All screenshots use invented VM names and documentation-only server addresses.
 
 <details>
 <summary>Light theme, compact layout and connection form</summary>
+
+![Missing OVF Tool status with custom-location and detection controls](docs/images/tool-missing.jpg)
 
 ![Light dashboard](docs/images/dashboard-light.jpg)
 
@@ -73,7 +76,16 @@ py -3 launch.pyw
 OVF Tool is located in this order: `OVFTOOL_PATH`, a private `ovftool/ovftool.exe` beside the app, the standard VMware installation under Program Files, then `PATH`. The public source archive contains no VMware executable or DLL.
 
 When `OVFTOOL_PATH` is explicitly set, that exact path is used. A missing override
-produces an error rather than selecting a different installation.
+produces an error rather than selecting a different installation. Selecting an
+executable with **Locate OVF Tool** takes priority over automatic detection and
+the environment override. The custom location is encrypted for your Windows
+account. **Auto-detect** clears that custom location and checks again.
+
+The installation directory does not need to be the default one. Choose the
+official `ovftool.exe` and keep its supporting DLLs/folders intact. A red
+missing-tool alert blocks new export setup; a found-tool status confirms file
+presence, not VMware connectivity or full runtime health. Active tasks must finish
+before changing tool locations.
 
 For a custom installation, set the executable path before launching:
 
@@ -117,6 +129,7 @@ The compatible data directory remains `%LOCALAPPDATA%\OVA Exporter`:
 | `connections.json` | DPAPI-encrypted address/username hints, only when requested |
 | `trusted_servers.json` | DPAPI-encrypted approved certificate fingerprints |
 | `appearance.json` | Plain `light`/`dark` preference only |
+| `tool_location.json` | DPAPI-encrypted custom OVF Tool path |
 
 There is no analytics or telemetry code. Diagnostics and task rows stay in memory by default. **Clear saved data** removes connection hints and certificate approvals. Passwords, cookies and session tickets are not written to these settings files. DPAPI protects stored data from casual file inspection and other Windows users; software running as the same Windows user can still decrypt it.
 

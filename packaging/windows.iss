@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "2.1.0"
+  #define AppVersion "2.2.0"
 #endif
 
 [Setup]
@@ -17,6 +17,7 @@ WizardStyle=modern
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
 InfoAfterFile=installer-notes.txt
+InfoBeforeFile=tool-requirement.txt
 SetupIconFile=..\assets\app.ico
 UninstallDisplayIcon={app}\OVAExporterGUI.exe
 OutputDir=..\dist
@@ -41,5 +42,5 @@ Name: "{autodesktop}\OVA Exporter GUI"; Filename: "{app}\OVAExporterGUI.exe"; Ta
 Name: "{group}\Uninstall OVA Exporter GUI"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\OVAExporterGUI.exe"; Description: "Open OVA Exporter GUI"; Flags: nowait postinstall skipifsilent unchecked
+Filename: "{app}\OVAExporterGUI.exe"; Description: "Open OVA Exporter GUI and check OVF Tool"; Flags: nowait postinstall skipifsilent
 Filename: "https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/"; Description: "Get VMware OVF Tool (required if not already installed)"; Flags: shellexec postinstall skipifsilent unchecked

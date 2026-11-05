@@ -1,6 +1,6 @@
 # Windows installer
 
-End users download `OVA-Exporter-GUI-2.1.0-Windows-x64-Setup.exe`, run it,
+End users download `OVA-Exporter-GUI-2.2.0-Windows-x64-Setup.exe`, run it,
 accept the app license and choose the install folder. Python and Tk are included.
 Installation is per Windows user and does not need administrator rights by default.
 Start menu and optional Desktop shortcuts use the project icon. Uninstall keeps
@@ -9,6 +9,11 @@ saved hints and exported VMs; remove saved hints through the app if desired.
 VMware OVF Tool remains a separate required installation under Broadcom's license.
 The completion page offers its official download link. A standard installation is
 detected automatically. The setup does not download or redistribute VMware files.
+The installer explains this requirement before installation and again at the end.
+On startup the app shows a red status and blocks new exports when the executable
+is missing. Use Locate OVF Tool for custom folders or Auto-detect after installation.
+The custom executable location is encrypted and remembered; no environment variable
+or restart is required. A file-presence check is not a full compatibility test.
 
 This installer is unsigned. Windows may display an unknown-publisher/SmartScreen
 warning. Code signing and clean Windows 10/11 installation/uninstallation tests

@@ -5,8 +5,11 @@ Install VMware OVF Tool from Broadcom if it is not already installed:
 https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/
 
 VMware OVF Tool is licensed separately and is not included in this installer.
-The standard Program Files installation is detected automatically. For a custom
-installation, set OVFTOOL_PATH to the full ovftool.exe path and restart the app.
+The app checks for OVF Tool when opened. If it is missing, a red status blocks
+new exports. After installing it, click Auto-detect. For a custom installation,
+click Locate OVF Tool and select ovftool.exe. No environment variable is needed.
+Leave its supporting DLLs and folders together. Tool detection does not certify
+server connectivity or the integrity of every supporting file.
 
 Connect using your ESXi or vCenter account and review the server fingerprint.
 Choose a powered-off VM and a destination with enough free space.

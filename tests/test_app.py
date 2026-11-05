@@ -3,6 +3,7 @@ import io
 import tarfile
 import tempfile
 import unittest
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
@@ -25,6 +26,27 @@ def close_root(root):
 
 
 class Tests(unittest.TestCase):
+    def test_inaccessible_tool_is_reported_missing(self):
+        from tool_paths import tool_file_exists
+        with patch.object(Path,'is_file',side_effect=PermissionError('fixture')):
+            self.assertFalse(tool_file_exists('ovftool.exe'))
+    def test_saved_tool_location_is_encrypted_and_recovered(self):
+        from tool_paths import ToolLocation
+        from test_connection_settings import FakeProtection
+        with tempfile.TemporaryDirectory() as directory:
+            store=ToolLocation(directory,FakeProtection())
+            path=Path(directory)/'custom'/'ovftool.exe'
+            self.assertIsNone(store.read())
+            store.save(path)
+            self.assertNotIn(str(path),store.path.read_text(encoding='utf-8'))
+            self.assertEqual(store.read(),path)
+            store.save(None)
+            self.assertIsNone(store.read())
+
+    def test_custom_tool_selection_precedes_environment_override(self):
+        from tool_paths import find_ovftool
+        with patch.dict('os.environ',{'OVFTOOL_PATH':'old-tool.exe'}):
+            self.assertEqual(find_ovftool('.',Path('custom/ovftool.exe')),Path('custom/ovftool.exe'))
     def test_endpoint_rejects_credentials_and_paths(self):
         self.assertEqual(endpoint('https://vsphere.example.test/ui/')[2], 'vsphere.example.test')
         self.assertEqual(endpoint('192.0.2.10:443')[1], 443)

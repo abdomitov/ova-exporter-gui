@@ -83,6 +83,8 @@ class ThemeManager:
         s.configure('Muted.TLabel', foreground=c['muted'])
         s.configure('Footnote.TLabel', foreground=c['muted'], font=('Segoe UI', 9))
         s.configure('Warning.TLabel', foreground=c['warning'])
+        s.configure('Error.TLabel', foreground=c['negative'])
+        s.configure('Success.TLabel', foreground=c['positive'])
         s.configure('Brand.TLabel', background=c['accent'], foreground='#ffffff', font=('Segoe UI', 11, 'bold'))
         s.configure('Card.TFrame', background=c['surface'])
         s.configure('Card.TLabel', background=c['surface'], foreground=c['muted'], font=('Segoe UI', 9))
