@@ -1,0 +1,40 @@
+# Local runtime and proprietary dependencies
+ovftool/
+*.exe
+*.dll
+*.msi
+*.ova
+*.ovf
+*.vmdk
+*.nvram
+*.vmx
+*.vmsd
+*.mf
+*.hlog
+*.incomplete*
+
+# User data and diagnostics
+connections.json
+trusted_servers.json
+appearance.json
+PREVIEW-NO-SETTINGS/
+*.log
+.env
+.env.*
+
+# Local history, builds, and Python artifacts
+artifacts/
+dist/
+build/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.bak
+*.backup
+.DS_Store
+Thumbs.db
+.ruff_cache/
+.build-tools/
+*.spec
+logs/

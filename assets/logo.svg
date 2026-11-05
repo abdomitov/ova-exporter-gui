@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+ <title>OVA Exporter GUI</title>
+ <rect width="128" height="128" rx="28" fill="#087f8c"/>
+ <g fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M29 41 64 21 99 41 64 61Z M29 41v41l35 20V61 M99 41v27"/>
+ </g>
+ <path d="M82 88h28m-11-11 11 11-11 11" fill="none" stroke="#a0f0cd" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

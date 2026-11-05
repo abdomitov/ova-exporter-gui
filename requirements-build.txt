@@ -1,0 +1,3 @@
+# Build-only dependencies; the installed app includes its Python runtime.
+pyinstaller==6.22.3
+pillow==13.0.0

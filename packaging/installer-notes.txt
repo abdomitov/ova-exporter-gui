@@ -1,0 +1,19 @@
+OVA Exporter GUI is installed. Python and Tk are included.
+
+ONE SEPARATE REQUIREMENT
+Install VMware OVF Tool from Broadcom if it is not already installed:
+https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/
+
+VMware OVF Tool is licensed separately and is not included in this installer.
+The standard Program Files installation is detected automatically. For a custom
+installation, set OVFTOOL_PATH to the full ovftool.exe path and restart the app.
+
+Connect using your ESXi or vCenter account and review the server fingerprint.
+Choose a powered-off VM and a destination with enough free space.
+Passwords are never saved. Remembered hints use Windows account encryption.
+
+Avoid interrupting exports when possible. Some ESXi versions can retain an
+export lock after cancellation; an administrator may need to resolve it.
+
+Uninstall removes program files and shortcuts. Your OVA exports and saved
+connection hints in LocalAppData\OVA Exporter are preserved.
