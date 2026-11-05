@@ -2,9 +2,11 @@
 
 <img src="assets/logo.svg" width="96" height="96" alt="OVA Exporter GUI cube and export arrow logo">
 
-**A Windows GUI for VMware OVF Tool.** Browse powered-off virtual machines on ESXi or vCenter and export verified OVA packages without writing shell commands.
+**A Windows GUI for VMware OVF Tool.** Browse powered-off virtual machines on ESXi or vCenter and export OVA packages with manifest checksum verification without writing shell commands.
 
 Independent community project. Not affiliated with or endorsed by Broadcom or VMware.
+
+Provided as is under the MIT license. See [responsibility and third-party terms](#license-responsibility-and-third-party-terms).
 
 **[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.2.0/OVA-Exporter-GUI-2.2.0-Windows-x64-Setup.exe)**
 
@@ -25,7 +27,7 @@ macOS and Linux downloads are not available yet.
 - Up to three concurrent exports across server addresses; one active export per address.
 - Approximate time remaining, output-file write rate, elapsed time and peak speed.
 - Manifest checksum verification before an `.incomplete` package becomes the final `.ova`.
-- Optional remembered addresses/usernames and trusted certificate fingerprints, protected with Windows current-user DPAPI. Passwords are never saved.
+- Optional remembered addresses/usernames and trusted certificate fingerprints, protected with Windows current-user DPAPI. The app does not write passwords to its settings files.
 
 This release supports exporting to a local OVA. It does not implement VM deployment, live migration, snapshot backups or resumable transfers.
 
@@ -50,7 +52,8 @@ All screenshots use invented VM names and documentation-only server addresses.
 
 ## Requirements
 
-- Windows 10/11 and Python 3.10 or newer with Tkinter. No third-party Python packages are required.
+- Windows 10/11 x64 is the target platform. Clean-machine Windows 10/11 installer testing remains unverified.
+- Source users need Python 3.10 or newer with Tkinter. The Windows installer includes Python/Tk; users of that installer do not need a separate Python installation. No third-party Python packages are required to run the source app.
 - [VMware OVF Tool](https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/), installed separately under its own license.
 - Access to the required VMware management and export endpoints and an account permitted to read inventory and export the chosen VM.
 - A powered-off VM and sufficient free space for the export. The initial free-space check cannot predict the final compressed size.
@@ -116,6 +119,11 @@ Server aliases and a vCenter plus its ESXi host can refer to the same physical r
 
 Speed is derived from OVA file growth, not total adapter traffic. ETA is approximate and excludes subsequent verification and server cleanup. A verified OVA with a source-state warning is distinguished from a failed transfer.
 
+Here, "verified" means the archive passed this app's manifest checksum checks.
+It does not prove the guest can boot, that its applications/data are consistent,
+that the archive is malware-free, or that a restore will succeed. This utility
+does not replace a tested backup and recovery system.
+
 **Cancelling a remote export can leave some ESXi versions stuck in an exporting state**, blocking power-on or later exports. See [Broadcom KB 334593](https://knowledge.broadcom.com/external/article/334593/unable-to-power-on-vm-with-error-the-att.html). A warning does not prevent that server defect. Letting transfers finish is preferable where possible.
 
 Queued tasks and local verification can be cancelled independently. An active-export cancellation requires confirmation. If OVF Tool stalls, a separate force-stop confirmation ends only the process owned by that task; it cannot guarantee server cleanup. The app never restarts ESXi services or changes VM power state. Incomplete files are not valid completed exports and cannot be resumed.
@@ -151,6 +159,24 @@ It injects in-memory settings, fake VM inventory and progress, and blocks socket
 The repository keeps application code in `src/`, regression tests in `tests/`,
 build helpers in `tools/`, installer configuration in `packaging/`, and user/developer
 documentation in `docs/`. End users only need the installer download.
+
+## License, responsibility and third-party terms
+
+This project's source and published GitHub downloads are offered without payment
+to the maintainers under the [MIT license](LICENSE), including its warranty
+disclaimer and limitation of liability. The software is provided **as is**,
+without a guarantee of error-free operation, suitability, successful recovery,
+or protection against data loss. Use only on systems you are authorized to manage;
+maintain independent backups and validate behavior in a disposable lab first.
+
+Broadcom and VMware do not publish, endorse, certify or provide support for this
+community project. We make no commitments on their behalf. VMware OVF Tool and
+other VMware products retain their own license, support and commercial terms;
+this project does not provide vendor licenses or waive vendor requirements,
+charges, rights or obligations. Broadcom/VMware binaries are not included.
+
+These notices describe this project's terms; they do not guarantee immunity from
+claims or override applicable law. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## License
 

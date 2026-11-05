@@ -19,6 +19,14 @@ The final guarded suite passes 83 tests, and the frozen executable's fake-only
 self-test passes. Clean-machine installer testing and real VMware validation
 remain outside these checks.
 
+Windows GitHub CI also passed on Python 3.10 and 3.14 for version 2.2.0:
+https://github.com/abdomitov/ova-exporter-gui/actions/runs/42007650250
+
+## Historical baseline: version 2.0.2
+
+The original review and its counts below describe that earlier source release.
+The 2.2.0 results above supersede those counts for the current published release.
+
 Target: Windows users exporting powered-off VMware VMs to a local verified OVA.
 Decision: suitable for a source preview release after the local checks below;
 not certified for unrestricted production use without disposable-lab validation.
@@ -84,12 +92,13 @@ working checkout. The artifact directory is excluded from public distribution.
    least-privilege permissions, insufficient disk space/network interruptions,
    server aliases and cancellation behavior. Never reproduce the known export
    state defect on a production VM. A UI warning cannot fix that server defect.
-2. Run the configured CI after pushing. Python 3.10 and a clean Windows install
-   were not available for local validation; verify both launchers there.
+2. CI now passes on Python 3.10/3.14. A clean Windows installation was not available
+   for local installer validation; verify installation and uninstallation there.
 3. Verify Narrator/NVDA, high DPI and Windows high-contrast mode. Canvas metrics
    are not yet a fully accessible native status surface.
 4. Public executable/installer signing, update delivery, and recovery/resume are
-   not implemented. The source release requires separate Python/Tk and OVF Tool.
+   not implemented. Source users require Python/Tk and OVF Tool; the Windows
+   installer bundles Python/Tk and still requires VMware OVF Tool separately.
 5. Same-Windows-user software can decrypt DPAPI data and inspect transient process
    arguments, including the single-use clone ticket. Cross-account DPAPI isolation
    was not separately exercised. This is not an app-only secrets vault.

@@ -18,3 +18,9 @@ This project draws its own UI assets and does not use VMware logos.
 
 VMware, vSphere, vCenter and ESXi are product names belonging to their respective
 owners. References describe compatibility; this is an independent project.
+
+Neither Broadcom nor VMware is the publisher or support provider for this GUI.
+No endorsement, certification, warranty or commercial commitment by either is
+claimed. This project's MIT license does not replace their product terms or
+grant rights to redistribute their proprietary software. We make no statement
+waiving their rights/obligations or guaranteeing their products are free of charge.
