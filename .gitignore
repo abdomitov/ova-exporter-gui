@@ -18,6 +18,7 @@ connections.json
 trusted_servers.json
 appearance.json
 tool_location.json
+updates.json
 PREVIEW-NO-SETTINGS/
 *.log
 .env

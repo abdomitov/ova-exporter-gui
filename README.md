@@ -8,9 +8,9 @@ Independent community project. Not affiliated with or endorsed by Broadcom or VM
 
 Provided as is under the MIT license. See [responsibility and third-party terms](#license-responsibility-and-third-party-terms).
 
-**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.2.0/OVA-Exporter-GUI-2.2.0-Windows-x64-Setup.exe)**
+**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.3.0/OVA-Exporter-GUI-2.3.0-Windows-x64-Setup.exe)**
 
-[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.2.0)
+[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.3.0)
 
 This is a preview release for Windows 10/11 x64. Python/Tk are included in the
 installer; VMware OVF Tool is a separate requirement. The installer is unsigned,
@@ -22,6 +22,8 @@ macOS and Linux downloads are not available yet.
 - Compact export dashboard; select a task to see its full progress and speed history.
 - Light and dark themes, resizable windows, keyboard navigation and mouse-wheel scrolling.
 - Startup OVF Tool detection, red missing-tool alert, and a custom-location picker.
+- Background app update checks, Update / Remind me later / Skip this version choices,
+  and verified installer downloads. Installation waits for exports to finish.
 - ESXi and vCenter connections with a fresh password for each new setup session.
 - Powered-off VM filter, search, destination selection and filename validation.
 - Up to three concurrent exports across server addresses; one active export per address.
@@ -49,6 +51,35 @@ All screenshots use invented VM names and documentation-only server addresses.
 ![Connection form with a masked-by-default password input](docs/images/new-export-dark.jpg)
 
 </details>
+
+## App updates
+
+Version 2.3.0 adds an **Updates** menu. By default, the app checks this public
+GitHub repository once at startup for a newer Windows installer, including
+published preview releases. Turn off **Check automatically at startup** to stop
+automatic requests. **Check for updates…** also works manually and can show a
+version you previously skipped.
+
+The prompt offers **Update**, **Remind me later** (one day), and **Skip this
+version**. Update downloads the installer and checks its size and SHA-256 against
+the published checksum and GitHub asset digest when present. You must then choose
+**Install now** and confirm. Installation is blocked while tasks are queued,
+transferring, verifying or awaiting cancellation/cleanup, or a New export window
+is open. You can download while exports continue; use **Updates → Install
+downloaded update…** once they finish. Setup closes the app and opens the normal
+Windows installation wizard; it does not silently install or stop exports.
+
+The update check sends no VMware credentials, server addresses or usernames.
+GitHub receives the normal network request, including your public IP address.
+An offline/failed automatic check does not interrupt exports. Update choices are
+saved in `updates.json`; downloaded installers stay in the `updates/` subfolder
+under the app's local data directory. A checksum is an integrity check, not a
+publisher signature: installers remain unsigned. A downloaded installer is checked
+again before launch. VMware OVF Tool is updated separately by the user.
+
+**Existing 2.2.0 and earlier users must install 2.3.0 manually once** to receive
+this functionality. Checks currently inspect the 30 most recent published GitHub
+releases and offer only releases with a complete Windows installer/checksum pair.
 
 ## Requirements
 
@@ -138,6 +169,8 @@ The compatible data directory remains `%LOCALAPPDATA%\OVA Exporter`:
 | `trusted_servers.json` | DPAPI-encrypted approved certificate fingerprints |
 | `appearance.json` | Plain `light`/`dark` preference only |
 | `tool_location.json` | DPAPI-encrypted custom OVF Tool path |
+| `updates.json` | Plain automatic-check, skipped-version and reminder preferences; no connection data |
+| `updates/` | Downloaded app installers; no OVA exports or VMware credentials |
 
 There is no analytics or telemetry code. Diagnostics and task rows stay in memory by default. **Clear saved data** removes connection hints and certificate approvals. Passwords, cookies and session tickets are not written to these settings files. DPAPI protects stored data from casual file inspection and other Windows users; software running as the same Windows user can still decrypt it.
 

@@ -1,4 +1,28 @@
-# Release review — 2026-11-05
+# Release review — 2026-11-06
+
+## 2.3.0 app updates
+
+Added background startup checks and a manual Updates menu, including automatic
+check opt-out, one-day reminders and persistent skipped versions. Published
+preview releases with a complete Windows installer/checksum pair are included.
+Only this repository's expected release URLs/filenames are accepted, with HTTPS
+redirect host checks, response/time/size bounds and SHA-256 verification. The
+installer is rehashed before a user-confirmed, shell-free launch. Installation
+is blocked while any task is unfinished or export setup is open. Downloading
+does not cancel tasks. Automatic network failures do not interrupt the workflow.
+
+The guarded offline suite now passes 101 tests, including 18 new updater checks:
+numeric ordering/downgrades, skipped versions, preview/draft filtering, invalid
+metadata/URLs, missing assets, public request headers, corrupt/truncated/oversized
+downloads, transfer failure, preference persistence, reminders, offline startup,
+busy-state/confirmation gates and verification-before-launch. Setup execution is
+mocked in tests. No VMware host was contacted. Real clean-machine upgrades,
+SmartScreen handling and live VMware operations remain unverified.
+
+Installers remain unsigned. GitHub HTTPS and published checksums provide integrity
+checks, not independent publisher identity; release-account compromise remains a
+trust boundary. Only app update settings are persisted in plaintext, with no
+VMware connection data. VMware OVF Tool is still a separate installation.
 
 ## 2.2.0 dependency-setup update
 
@@ -96,8 +120,9 @@ working checkout. The artifact directory is excluded from public distribution.
    for local installer validation; verify installation and uninstallation there.
 3. Verify Narrator/NVDA, high DPI and Windows high-contrast mode. Canvas metrics
    are not yet a fully accessible native status surface.
-4. Public executable/installer signing, update delivery, and recovery/resume are
-   not implemented. Source users require Python/Tk and OVF Tool; the Windows
+4. Public executable/installer signing and recovery/resume are not implemented.
+   App update delivery was added in 2.3.0 as described above.
+   Source users require Python/Tk and OVF Tool; the Windows
    installer bundles Python/Tk and still requires VMware OVF Tool separately.
 5. Same-Windows-user software can decrypt DPAPI data and inspect transient process
    arguments, including the single-use clone ticket. Cross-account DPAPI isolation

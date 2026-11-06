@@ -17,10 +17,10 @@ APP_FILES = tuple('src/'+name for name in (
     'accordion.py','app.py','branding.py','connection_settings.py','dashboard.py',
     'diagnostics.py','exporter.py','jobs.py','metadata.py','output_paths.py',
     'project_paths.py','secure_storage.py','task_view.py','theme.py','tool_paths.py',
-    'transfer_ui.py','ui_assets.py','vsphere.py','wizard.py',
+    'transfer_ui.py','ui_assets.py','vsphere.py','wizard.py','updates.py','update_ui.py',
 ))
 TEST_FILES = tuple('tests/'+name for name in (
-    'test_app.py','test_cancellation.py','test_connection_settings.py','test_jobs.py','test_ui.py',
+    'test_app.py','test_cancellation.py','test_connection_settings.py','test_jobs.py','test_ui.py','test_updates.py',
 ))
 EXTRA_FILES = APP_FILES+TEST_FILES+(
     'tools/preview_ui.py','tools/package_source.py','tools/offline_tests.py',

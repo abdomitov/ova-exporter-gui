@@ -1,5 +1,12 @@
 OVA Exporter GUI is installed. Python and Tk are included.
 
+APP UPDATES
+Use the Updates menu to check for newer app versions or turn off automatic
+startup checks. Update prompts let you update, remind you tomorrow or skip that
+version. Installation requires confirmation after all export tasks finish.
+The installer is unsigned; Windows may display a SmartScreen warning.
+VMware OVF Tool is installed and updated separately, as described below.
+
 ONE SEPARATE REQUIREMENT
 Install VMware OVF Tool from Broadcom if it is not already installed:
 https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/

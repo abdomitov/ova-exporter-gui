@@ -16,6 +16,7 @@ from jobs import JobManager
 from wizard import ExportWizard
 from branding import set_icon
 from project_paths import ROOT
+from update_ui import UpdateUI
 
 BASE = ROOT
 STOP_WARNING = ('Interrupting an export may leave the VM locked on ESXi and unable to power on or export again. '
@@ -24,7 +25,8 @@ STOP_WARNING = ('Interrupting an export may leave the VM locked on ESXi and unab
 
 
 class App:
-    def __init__(self, root, *, settings=None, remember_theme=True, tool_store=None, tool_locator=None):
+    def __init__(self, root, *, settings=None, remember_theme=True, tool_store=None, tool_locator=None,
+                 update_checks=True):
         self.root=root
         self.events=queue.Queue()
         self.wizard=None
@@ -97,6 +99,8 @@ class App:
         root.bind('<Control-n>',lambda event:self.new_download())
         root.bind('<Control-N>',lambda event:self.new_download())
         self.timer=root.after(100,self.poll)
+        self.updater=UpdateUI(self, directory if isinstance(directory,Path) else None,
+                              enabled=update_checks)
 
     def apply_theme(self, colors):
         self.theme_button.configure(text='Light theme' if self.theme.mode == 'dark' else 'Dark theme')
@@ -241,6 +245,8 @@ class App:
                 if kind=='job':
                     self.dashboard.handle(*payload)
                     self.refresh_tool()
+                elif kind=='update':
+                    self.updater.handle(*payload)
         except queue.Empty:
             pass
         if self.close_mode and self.exit_dialog is None and (self.manager.local_tools_stopped() if self.close_mode=='force' else not self.manager.unfinished()):
@@ -250,6 +256,9 @@ class App:
         self.timer=self.root.after(100,self.poll)
 
     def close(self):
+        if self.updater.downloading:
+            messagebox.showinfo('Update downloading','Wait for the app update download to finish before closing.',parent=self.root)
+            return
         if self.wizard and self.wizard.busy:
             messagebox.showinfo('Operation in progress','Wait for the export setup to finish.',parent=self.root)
             return

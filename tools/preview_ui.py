@@ -71,7 +71,8 @@ def machine(index, name, power='poweredOff'):
 class PreviewApp(application.App):
     def __init__(self, root):
         super().__init__(root, settings=MemorySettings(), remember_theme=False,
-                         tool_store=False,tool_locator=lambda base,selected=None: Path(sys.executable))
+                         tool_store=False,tool_locator=lambda base,selected=None: Path(sys.executable),
+                         update_checks=False)
         root.title('OVA Exporter GUI — FAKE DATA PREVIEW')
         self.manager.start = blocked
         self.manager.export = blocked
@@ -177,6 +178,20 @@ class PreviewApp(application.App):
             self.wizard.root.geometry('740x620')
             if '--wizard-selection' in sys.argv:
                 self.wizard.connect()
+        elif '--update-available' in sys.argv or '--update-ready' in sys.argv:
+            from updates import Release, REPOSITORY
+            self.updater.release=Release('9.0.0',f'https://github.com/{REPOSITORY}/releases/tag/v9.0.0',
+                                         '', '', 'fake-installer.exe', 10, '', True, 'Fake release')
+            self.updater.download=lambda *args:self.preview_notice()
+            self.updater.install=self.preview_notice
+            if '--update-ready' in sys.argv:
+                self.updater.ready=(Path('FAKE-NOT-AN-INSTALLER'), '0'*64)
+                self.updater.show_ready()
+            else:
+                self.updater.show_offer()
+            self.updater.dialog.title('Update prompt — FAKE DATA PREVIEW')
+            self.updater.dialog.protocol('WM_DELETE_WINDOW',self.finish_close)
+            self.updater.dialog.bind('<Escape>',lambda event:self.finish_close())
 
     def new_download(self):
         super().new_download()

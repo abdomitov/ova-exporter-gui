@@ -80,6 +80,7 @@ class ThemeManager:
         s.configure('TFrame', background=c['bg'])
         s.configure('TLabel', background=c['bg'], foreground=c['text'])
         s.configure('Title.TLabel', font=('Segoe UI', 20, 'bold'))
+        s.configure('Heading.TLabel', font=('Segoe UI', 13, 'bold'))
         s.configure('Muted.TLabel', foreground=c['muted'])
         s.configure('Footnote.TLabel', foreground=c['muted'], font=('Segoe UI', 9))
         s.configure('Warning.TLabel', foreground=c['warning'])
