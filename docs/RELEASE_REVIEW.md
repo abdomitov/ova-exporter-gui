@@ -1,4 +1,18 @@
-# Release review — 2026-11-06
+# Release review — 2026-11-07
+
+## 2.3.1 update-delivery validation patch
+
+Increased the app/installer version and added a maintainer release guide covering
+the required installer/checksum assets, draft publication, checks and installed-app
+validation. The updater and VMware export implementation are unchanged from 2.3.0.
+This provides a real newer release that installed 2.3.0 apps can discover.
+
+All 101 guarded offline tests pass. The installed 2.3.0 executable was confirmed
+to match the earlier build before preparing this patch. Live detection/download
+through that installed app can only be checked after publication and must be
+reported separately from installation success. No VMware host is needed for the
+update test. The release remains an unsigned Windows preview; publishing a version
+does not remove SmartScreen warnings or establish clean-machine compatibility.
 
 ## 2.3.0 app updates
 

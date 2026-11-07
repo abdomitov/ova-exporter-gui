@@ -1,6 +1,6 @@
 # Windows installer
 
-End users download `OVA-Exporter-GUI-2.3.0-Windows-x64-Setup.exe`, run it,
+End users download `OVA-Exporter-GUI-2.3.1-Windows-x64-Setup.exe`, run it,
 accept the app license and choose the install folder. Python and Tk are included.
 Installation is per Windows user and does not need administrator rights by default.
 Start menu and optional Desktop shortcuts use the project icon. Uninstall keeps
@@ -28,6 +28,11 @@ SHA-256 verification (repeated before launching setup). Installers remain unsign
 this does not establish publisher identity or protect against a compromised release
 account. The updater never downloads VMware OVF Tool or restarts host services.
 Users on older app versions must install 2.3.0 manually to obtain the updater.
+
+Maintainers publish higher-version releases through GitHub; see
+[Publishing updates](RELEASING.md). Version 2.3.1 is a patch release for validating
+the existing 2.3.0 update-delivery flow and documenting the release procedure;
+the VM export workflow is unchanged.
 
 ## Build
 
