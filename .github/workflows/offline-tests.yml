@@ -1,19 +1,43 @@
 name: Windows offline tests
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main, 'ci/**', 'feature/**', 'fix/**']
+  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   regression:
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         python: ['3.10', '3.14']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
       - run: python tools/offline_tests.py
       - run: python tools/preview_ui.py --check
       - run: python tools/package_source.py
+  dependencies:
+    name: Audit build dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pip-audit==2.10.1
+      - name: Check known vulnerabilities in Python build requirements
+        run: python -m pip_audit -r requirements-build.txt --progress-spinner off

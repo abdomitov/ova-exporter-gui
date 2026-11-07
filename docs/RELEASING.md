@@ -1,5 +1,20 @@
 # Publishing app updates
 
+## Automated delivery path
+
+Use **Actions → Build Windows release candidate → Run workflow** on `main`.
+The default `create_draft=false` runs the tests/build/installer checks and uploads
+seven-day artifacts without creating or publishing an app update. For a reviewed
+new app version, use `create_draft=true` to prepare a draft after all checks pass.
+Existing versions are never overwritten.
+
+After reviewing that draft and its exact build commit, **Publish reviewed release**
+can publish it only with the matching tag, current-main commit and explicit
+`confirm_publish=true`. It rechecks the source/files, build manifest and successful
+build run. This is a manual approval boundary; nothing auto-publishes on a push.
+See [the DevOps learning path](DEVOPS_PATH.md) for commands, scope and downsides.
+The manual commands below remain useful for understanding and recovery.
+
 ## How delivery works
 
 GitHub hosts the update feed and installer files. No separate server or always-on
