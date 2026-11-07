@@ -1,0 +1,128 @@
+name: Build Windows release candidate
+on:
+  push:
+    branches: ['ci/windows-release-pipeline']
+  workflow_dispatch:
+    inputs:
+      create_draft:
+        description: 'Create a draft release after every check passes (requires a new app version)'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    name: Validate release source
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.10'
+      - run: python tools/offline_tests.py
+      - run: python tools/preview_ui.py --check
+  build:
+    name: Build and test installer
+    needs: validate
+    runs-on: windows-2025
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.identity.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+      - name: Validate version and workflow context
+        id: identity
+        shell: pwsh
+        run: |
+          $version = (python -c 'import sys; sys.path.insert(0,"src"); from metadata import VERSION; print(VERSION)').Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid numeric app version' }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "Building app $version at $env:GITHUB_SHA" >> $env:GITHUB_STEP_SUMMARY
+      - name: Install pinned Python build dependencies
+        run: python -m pip install -r requirements-build.txt
+      - name: Run supported-current Python regressions
+        run: python tools/offline_tests.py
+      - name: Audit the resolved Windows build environment
+        shell: pwsh
+        run: |
+          python -m pip install pip-audit==2.10.1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m pip_audit --progress-spinner off
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force artifacts/ci | Out-Null
+          python -m pip freeze > artifacts/ci/build-packages.txt
+      - name: Install verified compiler on the ephemeral runner
+        shell: pwsh
+        run: .\tools\ci_compiler.ps1
+      - name: Build app and installer
+        shell: pwsh
+        run: .\tools\build_windows.ps1 -Python python -Iscc "$env:OVA_ISCC"
+      - name: Check the frozen app with fake data
+        shell: pwsh
+        run: |
+          $report = Join-Path $PWD 'artifacts/ci/frozen-check.json'
+          $process = Start-Process -FilePath "$PWD/dist/OVAExporterGUI/OVAExporterGUI.exe" -ArgumentList @('--self-test-report',('"'+$report+'"')) -WindowStyle Hidden -PassThru -Wait
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw 'Frozen self-test failed' }
+          $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+          if ($result.fake_ui_check -ne 'passed') { throw 'Frozen self-test did not pass' }
+      - name: Check real install, upgrade, reopen and uninstall on the fresh runner
+        run: python tools/ci_installer_check.py
+      - name: Package and verify the release files
+        run: |
+          python tools/package_source.py
+          python tools/release_artifacts.py verify-build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-release-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/*-Setup.exe
+            dist/*-Setup.exe.sha256
+            dist/*-source.zip
+            dist/*-source.zip.sha256
+            dist/build-manifest.json
+      - name: Upload diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-reports-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: ignore
+          path: artifacts/ci/
+  draft:
+    name: Prepare draft (never auto-publish)
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.create_draft && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-release-${{ github.run_id }}
+          path: release-files
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Verify and create a new draft without replacing an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/release_artifacts.py create-draft --directory release-files

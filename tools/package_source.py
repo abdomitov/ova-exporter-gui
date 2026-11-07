@@ -20,14 +20,16 @@ APP_FILES = tuple('src/'+name for name in (
     'transfer_ui.py','ui_assets.py','vsphere.py','wizard.py','updates.py','update_ui.py',
 ))
 TEST_FILES = tuple('tests/'+name for name in (
-    'test_app.py','test_cancellation.py','test_connection_settings.py','test_jobs.py','test_ui.py','test_updates.py',
+    'test_app.py','test_cancellation.py','test_connection_settings.py','test_jobs.py','test_ui.py','test_updates.py','test_release_pipeline.py',
 ))
 EXTRA_FILES = APP_FILES+TEST_FILES+(
     'tools/preview_ui.py','tools/package_source.py','tools/offline_tests.py',
     'tools/make_icons.py','tools/runtime_licenses.py','tools/build_windows.ps1','tools/check_update_installer.py',
-    'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/WINDOWS_INSTALLER.md','docs/RELEASING.md',
+    'tools/ci_compiler.ps1','tools/ci_installer_check.py','tools/release_artifacts.py',
+    'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/WINDOWS_INSTALLER.md','docs/RELEASING.md','docs/DEVOPS_PATH.md',
     '.github/ISSUE_TEMPLATE/bug_report.md','.github/PULL_REQUEST_TEMPLATE.md',
-    '.github/workflows/offline-tests.yml','assets/logo.svg','assets/logo.png','assets/app.ico',
+    '.github/workflows/offline-tests.yml','.github/workflows/release-build.yml','.github/workflows/publish-release.yml',
+    'assets/logo.svg','assets/logo.png','assets/app.ico',
     'packaging/windows.iss','packaging/installer-notes.txt','packaging/tool-requirement.txt',
 )
 OPTIONAL_IMAGES = ('docs/images/dashboard-dark.jpg', 'docs/images/dashboard-light.jpg',

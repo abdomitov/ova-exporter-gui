@@ -188,6 +188,10 @@ There is no analytics or telemetry code. Diagnostics and task rows stay in memor
 
 ## Development
 
+Want to learn the delivery process? Follow [Learn DevOps with this project](docs/DEVOPS_PATH.md)
+for the branch → CI → Windows build → installer checks → draft → reviewed release path,
+with practical exercises and tradeoffs. Build-only workflow runs do not publish an update.
+
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and [the architecture notes](docs/ARCHITECTURE.md). The existing offline regression suite uses fake clients; do not point tests at a production server.
 
 Run `py -3 tools/offline_tests.py` for guarded offline regressions. See the

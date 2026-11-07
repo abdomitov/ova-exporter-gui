@@ -1,0 +1,44 @@
+name: Publish reviewed release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Reviewed draft tag, for example v2.3.3'
+        type: string
+        required: true
+      commit:
+        description: 'Exact 40-character build commit (must still be current main)'
+        type: string
+        required: true
+      confirm_publish:
+        description: 'I reviewed this exact candidate; publishing offers it to installed updaters'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: publish-app-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    name: Validate reviewed draft and publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Check commit, build evidence and exact files, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OVA_RELEASE_TAG: ${{ inputs.tag }}
+          OVA_RELEASE_COMMIT: ${{ inputs.commit }}
+          OVA_CONFIRM_PUBLISH: ${{ inputs.confirm_publish }}
+        run: python tools/release_artifacts.py publish-reviewed
