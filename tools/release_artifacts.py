@@ -30,7 +30,7 @@ def sha256(path):
 
 
 def expected_files(version):
-    if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+    if not re.fullmatch(r'\d{1,5}\.\d{1,5}\.\d{1,5}', version):
         raise ValueError('Release versions must contain three numeric components.')
     installer = f'OVA-Exporter-GUI-{version}-Windows-x64-Setup.exe'
     source = f'ova-exporter-gui-{version}-source.zip'
