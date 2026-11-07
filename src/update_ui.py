@@ -1,6 +1,8 @@
 """Tk update workflow. Workers communicate through the app's event queue."""
 from pathlib import Path
+import os
 import subprocess
+import sys
 import threading
 import time
 import tkinter as tk
@@ -9,6 +11,23 @@ import webbrowser
 
 from metadata import VERSION
 from updates import UpdateClient, UpdatePreferences, verify_installer
+
+
+def installed_app_directory():
+    """A source checkout/portable build must retain the normal first-install UI."""
+    directory = Path(sys.executable).resolve().parent
+    return directory if (getattr(sys, 'frozen', False)
+                         and (directory / 'unins000.exe').is_file()) else None
+
+
+def installer_command(path):
+    directory = installed_app_directory()
+    if directory is None:
+        return [str(path), '/SP-']
+    # Keep error dialogs and a progress window. Do not close other instances,
+    # suppress security prompts, or permit an unattended machine restart.
+    return [str(path), '/SP-', '/SILENT', '/NORESTART', '/OVAUPDATE=1',
+            f'/OVAPID={os.getpid()}', f'/DIR={directory}']
 
 
 class UpdateUI:
@@ -22,6 +41,7 @@ class UpdateUI:
         self.enabled = enabled and self.directory is not None
         self.checking = self.downloading = self.launching = False
         self.release = self.ready = self.dialog = None
+        self.install_after_download = False
         self.automatic = tk.BooleanVar(value=self.preferences.automatic)
         self.bar = tk.Menu(self.root)
         self.menu = tk.Menu(self.bar, tearoff=False)
@@ -101,7 +121,10 @@ class UpdateUI:
                 return
             self.ready = path, digest
             self.menu.entryconfigure(3, state='normal')
-            self.show_ready()
+            if self.install_after_download and not self.blocked():
+                self.install(confirmed=True)
+            else:
+                self.show_ready()
 
     def window(self, title):
         if self.dialog and self.dialog.winfo_exists():
@@ -133,7 +156,10 @@ class UpdateUI:
         ttk.Label(frame, text=f'Version {release.version} is available', style='Heading.TLabel').pack(anchor='w')
         ttk.Label(frame, text=f'Installed: {VERSION}' + (' · New release: Windows preview' if release.preview else ''),
                   style='Muted.TLabel').pack(anchor='w', pady=(6, 10))
-        ttk.Label(frame, text='Download the app installer from this project’s GitHub release. '
+        ttk.Label(frame, text=('Update downloads and verifies the installer, applies the upgrade '
+                  'with a progress window, and reopens the app. Your existing folder and '
+                  'shortcut choices are retained. ' if installed_app_directory() else
+                  'Download the app installer from this project’s GitHub release. ') +
                   'Its SHA-256 checksum is checked before installation. The installer is unsigned. '
                   'VMware OVF Tool is installed and updated separately.', wraplength=490).pack(anchor='w')
         ttk.Label(frame, text='Installation is available after all queued and active export tasks finish.',
@@ -163,6 +189,7 @@ class UpdateUI:
         if window is not None:
             window.destroy()
         self.downloading = True
+        self.install_after_download = installed_app_directory() is not None
         release = self.release
         self.app.caption.set('Downloading the app update. Export tasks continue normally…')
         def worker():
@@ -187,25 +214,27 @@ class UpdateUI:
         ttk.Label(frame, text=f'Version {self.release.version} is ready', style='Heading.TLabel').pack(anchor='w')
         ttk.Label(frame, text=('Finish all export tasks and close the New export window before installing. '
                   'Then choose Updates → Install downloaded update.' if busy else
-                  'Install now closes this app and opens the Windows setup wizard. '
+                  ('Install now updates the app with a progress window and reopens it. '
+                   if installed_app_directory() else
+                   'Install now closes this app and opens the Windows setup wizard. ') +
                   'Your exports and saved preferences are preserved.'), wraplength=490).pack(anchor='w', pady=12)
         ttk.Label(frame, text='The installer is unsigned; Windows may show a SmartScreen warning.',
                   style='Warning.TLabel', wraplength=490).pack(anchor='w', pady=(0, 12))
         buttons = ttk.Frame(frame)
         buttons.pack(fill='x')
-        ttk.Button(buttons, text='Install now', command=self.install,
+        ttk.Button(buttons, text='Install now', command=lambda: self.install(confirmed=True),
                    state='disabled' if busy else 'normal', style='Accent.TButton').pack(side='left')
         ttk.Button(buttons, text='Later', command=window.destroy).pack(side='left', padx=8)
         self.app.theme.refresh_windows()
 
-    def install(self):
+    def install(self, *, confirmed=False):
         if not self.ready or self.launching:
             return
         if self.blocked():
             messagebox.showinfo('Finish exports first', 'Finish all queued and active export tasks and close the New export window before installing. No task was stopped.', parent=self.root)
             return
-        if not messagebox.askyesno('Install app update?',
-                'Close OVA Exporter GUI and open the Windows setup wizard? '
+        if not confirmed and not messagebox.askyesno('Install app update?',
+                'Close OVA Exporter GUI and install the downloaded update? '
                 'This updates the GUI only. VMware OVF Tool remains separate.', parent=self.root, default=messagebox.NO):
             return
         # Recheck after the confirmation (nested Tk loop) before starting setup.
@@ -214,7 +243,7 @@ class UpdateUI:
         path, digest = self.ready
         try:
             verify_installer(path, self.release, digest)
-            subprocess.Popen([str(path), '/SP-'], shell=False)
+            subprocess.Popen(installer_command(path), shell=False)
         except (OSError, ValueError):
             messagebox.showerror('Update could not start', 'The installer could not be verified or opened. Download it again from the project’s GitHub Releases page.', parent=self.root)
             return

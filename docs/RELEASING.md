@@ -87,11 +87,14 @@ After publishing the newer release:
 
 1. Open **Updates → Check for updates…** in the older app. Confirm both versions
    in the prompt. Do not alter the installed files to fake an older version.
-2. Choose **Update**. The app downloads the release asset, verifies its size and
-   checksum, and shows an update-ready prompt. No installation happens yet.
-3. With no unfinished exports or New export window, choose **Install now**,
-   confirm and complete the normal Windows setup wizard. An unsigned installer
-   may still trigger Windows security checks; do not disable security protections.
+2. In an installed 2.3.2 or later app, choose **Update**. It downloads the asset,
+   verifies size/checksum, installs with a progress window when idle, and reopens.
+   Existing folder/shortcut settings are retained; first-install pages are skipped.
+3. If any tasks or export setup remain open, installation is deferred until they
+   finish and you choose **Install now**. Older 2.3.0/2.3.1 apps open the regular
+   wizard once to obtain the improved updater. Source/portable copies also retain
+   that wizard. An unsigned installer may still trigger Windows security checks;
+   do not disable security protections.
 4. Open the installed app. Verify its new version in the title/footer and check
    again; the same version must not be offered as a new update.
 

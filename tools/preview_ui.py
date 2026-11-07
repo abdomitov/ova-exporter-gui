@@ -212,7 +212,7 @@ class PreviewApp(application.App):
         wizard.export_btn.configure(command=self.preview_notice)
         wizard.browse = self.preview_notice
 
-    def preview_notice(self, *args):
+    def preview_notice(self, *args, **kwargs):
         messagebox.showinfo('Fake-data preview', 'This preview cannot start exports or save data.', parent=self.root)
 
     def cancel_job(self, job_id):

@@ -1,5 +1,23 @@
 # Release review — 2026-11-07
 
+## 2.3.2 streamlined installed-app upgrades
+
+An explicit Update choice in an installed 2.3.2 app now authorizes download,
+verification and an idle-only upgrade. Setup uses the existing installation folder,
+reuses shortcut selections, shows progress, waits for the original process to exit
+and reopens the app. It does not suppress error/security dialogs, force-stop
+processes or restart Windows. If new tasks start during download, installation
+is deferred. First installations/source copies keep the normal setup wizard.
+Older updaters still use their existing wizard once to obtain this change.
+
+All 108 guarded offline tests pass, including seven new checks for command options,
+source/portable fallback, consent, busy-state deferral, errors and redundant prompt
+removal. The production Inno update script compiles successfully. The isolated
+native hook fixture compiled, but its executable launch was denied with WinError 5;
+therefore native wait/copy/reopen execution is not verified in this environment.
+No security controls were changed to bypass that block. The actual streamlined
+upgrade journey remains a release validation item; it is not implied by the tests.
+
 ## 2.3.1 update-delivery validation patch
 
 Increased the app/installer version and added a maintainer release guide covering

@@ -1,6 +1,6 @@
 # Windows installer
 
-End users download `OVA-Exporter-GUI-2.3.1-Windows-x64-Setup.exe`, run it,
+End users download `OVA-Exporter-GUI-2.3.2-Windows-x64-Setup.exe`, run it,
 accept the app license and choose the install folder. Python and Tk are included.
 Installation is per Windows user and does not need administrator rights by default.
 Start menu and optional Desktop shortcuts use the project icon. Uninstall keeps
@@ -30,9 +30,18 @@ account. The updater never downloads VMware OVF Tool or restarts host services.
 Users on older app versions must install 2.3.0 manually to obtain the updater.
 
 Maintainers publish higher-version releases through GitHub; see
-[Publishing updates](RELEASING.md). Version 2.3.1 is a patch release for validating
-the existing 2.3.0 update-delivery flow and documenting the release procedure;
-the VM export workflow is unchanged.
+[Publishing updates](RELEASING.md). From an installed 2.3.2 app, the Update button
+authorizes the verified download and subsequent upgrade when idle. Setup uses
+`/SILENT /NORESTART` plus the current app folder and process ID. It shows progress
+instead of first-install questions, waits up to 30 seconds for that process to
+exit, and reopens the app on successful completion. Error dialogs remain visible;
+other processes are not closed or force-stopped. Shortcut selections are reused.
+Update mode requires an existing executable/uninstaller in that folder and a
+valid parent PID before copying files. Source/portable copies keep the normal UI.
+
+The old 2.3.0/2.3.1 updater still opens the full wizard once to obtain 2.3.2. The
+streamlined behavior applies to updates initiated by the newer app. Manually
+opening the installer for an initial installation keeps its normal wizard.
 
 ## Build
 
@@ -64,3 +73,14 @@ For an isolated check of the bundled app without credentials/settings/network:
 The GUI executable writes a small JSON report on completion and exits. This
 checks the frozen payload; it does not validate real VMware export or prove a
 successful clean-machine install/uninstall.
+
+The native hook fixture can be run separately from the guarded offline suite:
+
+```powershell
+python tools/check_update_installer.py --iscc 'C:\Path\To\ISCC.exe'
+```
+
+It compiles the production update hooks into an isolated installer with fake files,
+no uninstall registry entries and no shortcuts. It checks parent-exit waiting,
+replacement/reopen order and rejection of missing-installation/PID requests. A
+Windows execution block is a blocked check, not a pass; do not disable protections.

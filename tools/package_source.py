@@ -24,7 +24,7 @@ TEST_FILES = tuple('tests/'+name for name in (
 ))
 EXTRA_FILES = APP_FILES+TEST_FILES+(
     'tools/preview_ui.py','tools/package_source.py','tools/offline_tests.py',
-    'tools/make_icons.py','tools/runtime_licenses.py','tools/build_windows.ps1',
+    'tools/make_icons.py','tools/runtime_licenses.py','tools/build_windows.ps1','tools/check_update_installer.py',
     'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/WINDOWS_INSTALLER.md','docs/RELEASING.md',
     '.github/ISSUE_TEMPLATE/bug_report.md','.github/PULL_REQUEST_TEMPLATE.md',
     '.github/workflows/offline-tests.yml','assets/logo.svg','assets/logo.png','assets/app.ico',

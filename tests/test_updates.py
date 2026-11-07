@@ -251,6 +251,64 @@ class UpdateUITests(unittest.TestCase):
             warning.assert_not_called()
         self.assertFalse(self.ui.checking)
 
+    def test_installed_update_preserves_folder_and_never_restarts_windows_or_forces_apps(self):
+        from update_ui import installer_command
+        folder = Path('C:/Example Folder/OVA Exporter GUI')
+        with patch('update_ui.installed_app_directory', return_value=folder), \
+             patch('update_ui.os.getpid', return_value=1234):
+            command = installer_command(Path('downloaded.exe'))
+        self.assertEqual(command, ['downloaded.exe', '/SP-', '/SILENT', '/NORESTART',
+                                  '/OVAUPDATE=1', '/OVAPID=1234', f'/DIR={folder}'])
+        self.assertFalse(any('CLOSEAPPLICATIONS' in arg or 'FORCE' in arg for arg in command))
+
+    def test_portable_or_source_install_keeps_normal_setup(self):
+        from update_ui import installer_command, installed_app_directory
+        with patch('update_ui.sys.frozen', False, create=True):
+            self.assertIsNone(installed_app_directory())
+            self.assertEqual(installer_command('downloaded.exe'), ['downloaded.exe', '/SP-'])
+        with patch('update_ui.sys.frozen', True, create=True), \
+             patch.object(Path, 'is_file', return_value=False):
+            self.assertIsNone(installed_app_directory())
+
+    def test_verified_download_auto_installs_only_after_explicit_update_choice(self):
+        self.ui.install_after_download = True
+        with patch.object(self.ui, 'install') as install, patch.object(self.ui, 'show_ready') as ready:
+            self.ui.handle('downloaded', (Path('downloaded.exe'), DIGEST, None))
+            install.assert_called_once_with(confirmed=True)
+            ready.assert_not_called()
+
+    def test_download_without_auto_install_consent_stays_ready(self):
+        self.ui.install_after_download = False
+        with patch.object(self.ui, 'install') as install, patch.object(self.ui, 'show_ready') as ready:
+            self.ui.handle('downloaded', (Path('downloaded.exe'), DIGEST, None))
+            install.assert_not_called()
+            ready.assert_called_once()
+
+    def test_new_export_started_during_download_defers_installation(self):
+        self.ui.install_after_download = True
+        self.app.manager.unfinished = Mock(return_value=[object()])
+        with patch.object(self.ui, 'install') as install, patch.object(self.ui, 'show_ready') as ready:
+            self.ui.handle('downloaded', (Path('downloaded.exe'), DIGEST, None))
+            install.assert_not_called()
+            ready.assert_called_once()
+
+    def test_update_download_failure_never_closes_or_installs(self):
+        self.ui.install_after_download = True
+        with patch.object(self.ui, 'install') as install, \
+             patch.object(self.app, 'finish_close') as close, \
+             patch('update_ui.messagebox.showerror'):
+            self.ui.handle('downloaded', (None, None, 'fixture download failed'))
+            install.assert_not_called()
+            close.assert_not_called()
+
+    def test_explicit_ready_button_does_not_repeat_confirmation(self):
+        self.ui.show_ready()
+        with patch('update_ui.messagebox.askyesno') as ask, \
+             patch('update_ui.verify_installer'), patch('update_ui.subprocess.Popen'), \
+             patch.object(self.app, 'finish_close'):
+            next(button for button in self.buttons(self.ui.dialog) if button['text'] == 'Install now').invoke()
+            ask.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

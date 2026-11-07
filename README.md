@@ -8,9 +8,9 @@ Independent community project. Not affiliated with or endorsed by Broadcom or VM
 
 Provided as is under the MIT license. See [responsibility and third-party terms](#license-responsibility-and-third-party-terms).
 
-**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.3.1/OVA-Exporter-GUI-2.3.1-Windows-x64-Setup.exe)**
+**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.3.2/OVA-Exporter-GUI-2.3.2-Windows-x64-Setup.exe)**
 
-[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.3.1)
+[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.3.2)
 
 This is a preview release for Windows 10/11 x64. Python/Tk are included in the
 installer; VMware OVF Tool is a separate requirement. The installer is unsigned,
@@ -62,12 +62,19 @@ version you previously skipped.
 
 The prompt offers **Update**, **Remind me later** (one day), and **Skip this
 version**. Update downloads the installer and checks its size and SHA-256 against
-the published checksum and GitHub asset digest when present. You must then choose
-**Install now** and confirm. Installation is blocked while tasks are queued,
-transferring, verifying or awaiting cancellation/cleanup, or a New export window
-is open. You can download while exports continue; use **Updates → Install
-downloaded update…** once they finish. Setup closes the app and opens the normal
-Windows installation wizard; it does not silently install or stop exports.
+the published checksum and GitHub asset digest when present. From an installed
+copy of version 2.3.2 or later, choosing **Update** authorizes downloading and
+installing the update, then reopening the app. Setup shows installation progress
+without repeating the first-install pages. The existing folder and shortcut
+choices are retained. Error dialogs and Windows security prompts can still appear;
+the updater does not force a Windows restart or close other app instances.
+
+Installation is blocked while tasks are queued, transferring, verifying or awaiting
+cancellation/cleanup, or a New export window is open. If tasks start during the
+download, installation is deferred; choose **Install now** after they finish.
+Source/portable copies without an installed uninstaller keep the regular setup UI.
+Versions 2.3.0/2.3.1 still open that regular wizard once when installing this
+improvement; later updates started from 2.3.2 use the streamlined flow.
 
 The update check sends no VMware credentials, server addresses or usernames.
 GitHub receives the normal network request, including your public IP address.
