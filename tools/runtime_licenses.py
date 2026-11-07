@@ -23,18 +23,22 @@ def license_urls(tcl_version, tk_version, openssl_version):
     }
 
 
+def runtime_versions():
+    # Tkinter initializes Tk through its C API. A Tcl-only interpreter's
+    # `package require Tk` can fail in otherwise valid Python distributions.
+    root=tkinter.Tk()
+    try:
+        root.withdraw()
+        return root.tk.eval('info patchlevel'), root.tk.eval('package provide Tk')
+    finally:
+        root.destroy()
+
+
 def collect(destination):
     target=Path(destination)
     target.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(Path(sys.base_prefix)/'LICENSE.txt',target/'PYTHON.txt')
-    interpreter=tkinter.Tcl()
-    tcl_version=interpreter.eval('info patchlevel')
-    try:
-        tk_version=interpreter.eval('package require Tk')
-    finally:
-        if interpreter.eval('info commands wm'):
-            interpreter.eval('wm withdraw .')
-            interpreter.eval('destroy .')
+    tcl_version,tk_version=runtime_versions()
     openssl_version=ssl.OPENSSL_VERSION.split()[1]
     urls=license_urls(tcl_version,tk_version,openssl_version)
     for name,url in urls.items():

@@ -6,16 +6,25 @@ from pathlib import Path
 import tempfile
 import unittest
 import zipfile
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from tools.ci_installer_check import ensure_runner
 from tools.release_artifacts import (create_draft, expected_files, publish_reviewed,
                                      validate_publish_choice, verify_files, verify_source)
 from metadata import VERSION
-from tools.runtime_licenses import license_urls
+from tools.runtime_licenses import license_urls, runtime_versions
 
 
 class ReleasePipelineTests(unittest.TestCase):
+    def test_runtime_version_probe_uses_tk_initialization_and_always_closes_it(self):
+        root=Mock()
+        root.tk.eval.side_effect=lambda command: {'info patchlevel': '8.6.17',
+                                                'package provide Tk': '8.6.16'}[command]
+        with patch('tools.runtime_licenses.tkinter.Tk', return_value=root):
+            self.assertEqual(runtime_versions(), ('8.6.17', '8.6.16'))
+        root.withdraw.assert_called_once()
+        root.destroy.assert_called_once()
+
     def test_runtime_license_urls_follow_exact_versions_without_local_tk_paths(self):
         urls = license_urls('8.6.17', '8.6.16', '3.5.4')
         self.assertEqual(urls['TK.txt'], 'https://raw.githubusercontent.com/tcltk/tk/core-8-6-16/license.terms')
