@@ -13,7 +13,7 @@ from pathlib import Path
 from exporter import export_command, ProgressParser, TransferTracker, verify_ova
 from vsphere import fingerprint
 from diagnostics import machine_error_messages
-from output_paths import validate_output_name
+from output_paths import EXPORT_ID_LENGTH, validate_output_name
 
 TERMINAL = {'done', 'done_warning', 'failed', 'cancelled', 'cleanup_required'}
 ABORT_NOTICE_SECONDS = 60
@@ -30,7 +30,7 @@ class ExportJob:
     client: object
     vm: dict
     target: Path
-    id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:EXPORT_ID_LENGTH])
     state: str = 'queued'
     cancelled: threading.Event = field(default_factory=threading.Event)
     process: object = None

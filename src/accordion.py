@@ -131,7 +131,8 @@ class Accordion(ttk.Frame):
         for step, body in self.bodies.items():
             row = (step - 1) * 2 + 1
             self.rowconfigure(row, weight=1 if number == step else 0)
-            self.headers[step].configure(text=('−  ' if number == step else '+  ') + self.titles[step])
+            self.headers[step].configure(text=('−  ' if number == step else '+  ') + self.titles[step],
+                                         style='ActiveSection.TButton' if number==step else 'Section.TButton')
             if number == step:
                 body.grid()
                 body.schedule()

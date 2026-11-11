@@ -43,8 +43,7 @@ class UpdateUI:
         self.release = self.ready = self.dialog = None
         self.install_after_download = False
         self.automatic = tk.BooleanVar(value=self.preferences.automatic)
-        self.bar = tk.Menu(self.root)
-        self.menu = tk.Menu(self.bar, tearoff=False)
+        self.menu = tk.Menu(self.root, tearoff=False)
         self.menu.add_command(label='Check for updates…', command=lambda: self.check(manual=True),
                               state='normal' if self.enabled else 'disabled')
         self.menu.add_checkbutton(label='Check automatically at startup', variable=self.automatic,
@@ -52,8 +51,9 @@ class UpdateUI:
                                   state='normal' if self.enabled else 'disabled')
         self.menu.add_separator()
         self.menu.add_command(label='Install downloaded update…', command=self.install, state='disabled')
-        self.bar.add_cascade(label='Updates', menu=self.menu)
-        self.root.configure(menu=self.bar)
+        self.button = ttk.Menubutton(app.header_actions,text='Updates',menu=self.menu,style='Quiet.TMenubutton')
+        self.button.pack(side='left')
+        self.app.theme.refresh_windows()
         if self.enabled and self.preferences.due():
             self.root.after(2500, self.check)
 

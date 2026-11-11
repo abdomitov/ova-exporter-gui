@@ -16,7 +16,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
-from metadata import VERSION
+from metadata import VERSION  # noqa: E402 - standalone script bootstraps src above
 
 BASELINE_URL = ('https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.3.1/'
                 'OVA-Exporter-GUI-2.3.1-Windows-x64-Setup.exe')
@@ -42,6 +42,28 @@ def run():
     target = Path(os.environ['RUNNER_TEMP']) / 'OVA Exporter GUI CI'
     if target.exists():
         raise RuntimeError('The installer test requires an unused target directory.')
+    candidate = ROOT / 'dist' / f'OVA-Exporter-GUI-{VERSION}-Windows-x64-Setup.exe'
+    # Check a fresh candidate installation separately from upgrading the public
+    # baseline: success of one does not establish the other.
+    fresh = Path(os.environ['RUNNER_TEMP']) / 'OVA Exporter GUI Fresh CI'
+    if fresh.exists():
+        raise RuntimeError('The fresh-install check requires an unused target directory.')
+    subprocess.run([str(candidate), '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+                    '/SP-', f'/DIR={fresh}', f'/LOG={report_dir / "fresh-install.log"}'],
+                   check=True, timeout=120)
+    if (not (fresh / 'unins000.exe').is_file() or
+            digest(fresh / 'OVAExporterGUI.exe') != digest(ROOT / 'dist' / 'OVAExporterGUI' / 'OVAExporterGUI.exe')):
+        raise RuntimeError('The fresh installation does not match the candidate build.')
+    fresh_report = report_dir / 'fresh-frozen-check.json'
+    subprocess.run([str(fresh / 'OVAExporterGUI.exe'), '--self-test-report', str(fresh_report)],
+                   check=True, timeout=60)
+    if json.loads(fresh_report.read_text()).get('fake_ui_check') != 'passed':
+        raise RuntimeError('The freshly installed app failed its guarded startup check.')
+    subprocess.run([str(fresh / 'unins000.exe'), '/VERYSILENT', '/SUPPRESSMSGBOXES',
+                    '/NORESTART', f'/LOG={report_dir / "fresh-uninstall.log"}'],
+                   check=True, timeout=120)
+    if (fresh / 'OVAExporterGUI.exe').exists():
+        raise RuntimeError('The fresh-install uninstaller left the executable behind.')
     baseline = Path(os.environ['RUNNER_TEMP']) / 'ova-baseline-2.3.1.exe'
     with urllib.request.urlopen(BASELINE_URL, timeout=60) as response:
         body = response.read(50_000_001)
@@ -63,7 +85,6 @@ def run():
     title = f'OVA Exporter GUI {VERSION}'
     if user32.FindWindowW(None, title):
         raise RuntimeError('Unexpected app instance existed before the isolated upgrade.')
-    candidate = ROOT / 'dist' / f'OVA-Exporter-GUI-{VERSION}-Windows-x64-Setup.exe'
     # Only this short-lived child is used for the parent-exit wait check.
     parent = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(4)'])
     started = time.monotonic()
@@ -97,6 +118,7 @@ def run():
     if installed.exists():
         raise RuntimeError('Uninstall did not remove the installed executable.')
     report = dict(baseline='2.3.1', candidate=VERSION, fresh_install='passed',
+                  fresh_launch_self_test='passed', fresh_uninstall='passed',
                   parent_exit_wait='passed', upgrade='passed', reopen='passed',
                   uninstall='passed', vmware_connections='none',
                   scope='disposable GitHub-hosted Windows runner; not all Windows configurations')

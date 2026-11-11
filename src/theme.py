@@ -89,6 +89,9 @@ class ThemeManager:
         s.configure('Brand.TLabel', background=c['accent'], foreground='#ffffff', font=('Segoe UI', 11, 'bold'))
         s.configure('Card.TFrame', background=c['surface'])
         s.configure('Card.TLabel', background=c['surface'], foreground=c['muted'], font=('Segoe UI', 9))
+        s.configure('FieldLabel.TLabel',background=c['surface'],foreground=c['text'],font=('Segoe UI',10))
+        s.configure('EmptyTitle.TLabel',background=c['surface'],foreground=c['text'],font=('Segoe UI',16,'bold'))
+        s.configure('TableHint.TLabel',background=c['surface'],foreground=c['muted'],font=('Segoe UI',10),padding=(12,6))
         s.configure('Metric.TLabel', background=c['surface'], foreground=c['text'], font=('Segoe UI', 19, 'bold'))
         s.configure('Empty.TLabel', background=c['surface'], foreground=c['muted'], font=('Segoe UI', 11), padding=20)
         s.configure('TButton', padding=(12, 7), background=c['surface'], foreground=c['text'],
@@ -99,22 +102,32 @@ class ThemeManager:
         s.map('Accent.TButton', background=[('disabled', c['border']), ('active', c['accent_hover'])],
               foreground=[('disabled', c['disabled']), ('!disabled', '#ffffff')])
         s.configure('Quiet.TButton', background=c['bg'])
+        s.configure('TMenubutton',padding=(10,7),background=c['surface'],foreground=c['text'],
+                    borderwidth=1,relief='flat',arrowsize=5,arrowcolor=c['muted'],arrowpadding=(4,0,2,0))
+        s.configure('Quiet.TMenubutton',background=c['bg'])
+        s.map('TMenubutton',background=[('active',c['field'])],
+              foreground=[('disabled',c['disabled'])],bordercolor=[('focus',c['accent'])])
+        s.configure('TSeparator',background=c['border'])
         s.configure('Section.TButton', anchor='w', font=('Segoe UI', 10, 'bold'), padding=(12, 9))
+        s.configure('ActiveSection.TButton',anchor='w',font=('Segoe UI',10,'bold'),padding=(12,9),
+                    background=c['field'],foreground=c['positive'],bordercolor=c['accent'])
+        s.map('ActiveSection.TButton',background=[('active',c['selection'])],foreground=[('!disabled',c['positive'])])
         for kind in ('TEntry', 'TCombobox'):
             s.configure(kind, fieldbackground=c['field'], foreground=c['text'], padding=(8, 7),
                         selectbackground=c['selection'], selectforeground=c['text'], arrowsize=14,
                         bordercolor='#6c8095' if self.mode=='dark' else '#8092a7')
             s.map(kind, fieldbackground=[('disabled', c['bg']), ('readonly', c['field'])],
                   foreground=[('disabled', c['disabled'])], bordercolor=[('focus', c['accent'])])
+        s.configure('TCombobox',arrowcolor=c['muted'])
         s.configure('PasswordEye.TButton', background=c['field'], borderwidth=0, padding=0)
         s.layout('PasswordEye.TButton', [('Button.padding', {'sticky': 'nswe', 'children': [
             ('Button.focus', {'sticky': 'nswe', 'children': [('Button.label', {'sticky': 'nswe'})]})]})])
         s.map('PasswordEye.TButton', background=[('disabled', c['bg']), ('focus', c['selection']), ('active', c['selection'])])
-        s.configure('Treeview', rowheight=34, background=c['surface'], fieldbackground=c['surface'],
+        s.configure('Treeview', rowheight=32, background=c['surface'], fieldbackground=c['surface'],
                     foreground=c['text'], borderwidth=0)
         s.map('Treeview', background=[('selected', c['selection'])], foreground=[('selected', c['text'])])
         s.configure('Treeview.Heading', background=c['field'], foreground=c['muted'],
-                    font=('Segoe UI', 9, 'bold'), padding=(10, 9), relief='flat', borderwidth=0)
+                    font=('Segoe UI', 9, 'bold'), padding=(10, 6), relief='flat', borderwidth=0)
         s.map('Treeview.Heading', background=[('active', c['selection'])])
         s.configure('TScrollbar', background=c['border'], arrowcolor=c['muted'], borderwidth=0,
                     gripcount=0, arrowsize=12, troughcolor=c['bg'])
@@ -145,6 +158,10 @@ class ThemeManager:
                 widget.configure(background=c['surface'], foreground=c['text'],
                                  insertbackground=c['text'], selectbackground=c['selection'],
                                  relief='flat', padx=12, pady=12)
+            elif isinstance(widget, tk.Menu):
+                widget.configure(background=c['surface'],foreground=c['text'],
+                                 activebackground=c['selection'],activeforeground=c['text'],
+                                 selectcolor=c['accent'],borderwidth=1)
             for child in widget.winfo_children():
                 visit(child)
         visit(self.root)
