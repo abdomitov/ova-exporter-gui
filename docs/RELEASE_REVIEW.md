@@ -1,5 +1,13 @@
 # Release review — 2026-11-11
 
+## 2.3.5 security and UI update
+
+Includes the UI and QA improvements reviewed below, certificate approval defaulting
+to No, and bounded TAR metadata verification. Ordinary PAX/GNU long-name archives
+remain supported. See [security review](SECURITY_REVIEW.md) for findings and limits.
+166 guarded offline tests pass locally. Release CI must validate this exact commit
+and installer before publication. No live VMware operation is part of release CI.
+
 ## 2.3.4 QA hardening candidate
 
 The full review reproduced and fixed blank destination fallback, destination

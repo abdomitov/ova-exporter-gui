@@ -536,7 +536,7 @@ class ExportWizard:
             accepted = messagebox.askyesno('Certificate changed — review required' if trusted else 'Trust this VMware server?',
                 f'Server: {address}\n\n'+changed+f'Current SHA-256 certificate fingerprint:\n{sha256}\n\n'
                 'Compare this fingerprint with your server certificate before continuing.\n'
-                'Trust and remember this certificate on this PC?', parent=self.root)
+                'Trust and remember this certificate on this PC?', parent=self.root, default=messagebox.NO)
             if not accepted:
                 self.password.set('')
                 self.hide_password()
