@@ -296,7 +296,9 @@ class ResponsiveUITests(unittest.TestCase):
         self.assertTrue(dashboard.tree.winfo_ismapped())
         self.assertFalse(dashboard.detail_scroll.winfo_ismapped())
         dashboard.details_button.invoke()
-        resize(1000,760)
+        # The hosted desktop can clamp a 760px client area to 749px.
+        # 700px still exercises the >=600px split layout within its work area.
+        resize(1000,700)
         self.app.resize_layout()
         self.root.update_idletasks()
         self.assertEqual(len(dashboard.panes.panes()),2)
