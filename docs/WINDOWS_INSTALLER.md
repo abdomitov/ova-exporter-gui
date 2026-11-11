@@ -1,6 +1,6 @@
 # Windows installer
 
-End users download `OVA-Exporter-GUI-2.3.2-Windows-x64-Setup.exe`, run it,
+End users download `OVA-Exporter-GUI-2.3.5-Windows-x64-Setup.exe`, run it,
 accept the app license and choose the install folder. Python and Tk are included.
 Installation is per Windows user and does not need administrator rights by default.
 Start menu and optional Desktop shortcuts use the project icon. Uninstall keeps

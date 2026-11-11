@@ -1,6 +1,6 @@
 """Application lifecycle and task actions for OVA Exporter GUI."""
 import queue
-import threading
+import time
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -40,7 +40,8 @@ class App:
             self.settings_error=str(error)
         root.title(f'{APP_NAME} {VERSION}')
         set_icon(root)
-        root.geometry('1120x780')
+        root.geometry(f'{max(640,min(1120,root.winfo_screenwidth()-80))}x'
+                      f'{max(420,min(780,root.winfo_screenheight()-100))}')
         root.minsize(640,420)
         directory=getattr(self.settings, 'directory', None)
         preference=directory/'appearance.json' if remember_theme and isinstance(directory, Path) else None
@@ -51,7 +52,7 @@ class App:
         if self.tool_store is not None:
             try:
                 self.selected_tool=self.tool_store.read()
-            except (OSError,ValueError,TypeError,UnicodeError) as error:
+            except (OSError,ValueError,TypeError,UnicodeError):
                 self.tool_storage_error='Saved tool location could not be read; select it again.'
         self.theme=ThemeManager(root, preference)
         outer=ttk.Frame(root,padding=(20,16))
@@ -61,14 +62,16 @@ class App:
         self.header=header
         header.pack(fill='x',pady=(0,14))
         logo=getattr(root,'_ova_logo',None)
-        self.brand_icon=logo.subsample(3,3) if logo else None
+        self.brand_icon=logo.subsample(4,4) if logo else None
         brand=ttk.Label(header,image=self.brand_icon,text='' if logo else 'OVA',style='Brand.TLabel',padding=(4,4))
         brand.pack(side='left',padx=(0,12))
         titles=ttk.Frame(header)
         titles.pack(side='left',fill='x',expand=True)
         ttk.Label(titles,text=APP_NAME,style='Title.TLabel').pack(anchor='w')
-        ttk.Label(titles,text='VMware OVF Tool, made visual',style='Muted.TLabel').pack(anchor='w',pady=(2,0))
-        self.theme_button=ttk.Button(header,command=self.toggle_theme,style='Quiet.TButton')
+        ttk.Label(titles,text='ESXi & vCenter · OVA exports',style='Muted.TLabel').pack(anchor='w',pady=(2,0))
+        self.header_actions=ttk.Frame(header)
+        self.header_actions.pack(side='right',padx=(12,0))
+        self.theme_button=ttk.Button(self.header_actions,command=self.toggle_theme,style='Quiet.TButton')
         self.theme_button.pack(side='right',padx=(10,0))
         self.caption=tk.StringVar(value=self.tool_storage_error or 'Your exports, in one place. Select a task to see its transfer details.')
         self.tool_path=self.tool_locator(BASE,self.selected_tool)
@@ -83,6 +86,12 @@ class App:
         self.tool_auto=ttk.Button(self.tool_bar,text='Auto-detect',command=self.auto_tool)
         self.tool_auto.pack(side='left')
         self.tool_download=ttk.Button(self.tool_bar,text='Download',command=lambda:webbrowser.open('https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/'))
+        self.tool_menu=tk.Menu(root,tearoff=False)
+        self.tool_menu.add_command(label='Choose OVF Tool location…',command=lambda:self.tool_browse.invoke())
+        self.tool_menu.add_command(label='Auto-detect installed tool',command=lambda:self.tool_auto.invoke())
+        self.tool_menu.add_separator()
+        self.tool_menu.add_command(label='Download from Broadcom…',command=lambda:self.tool_download.invoke())
+        self.tool_manage=ttk.Menubutton(self.tool_bar,text='OVF Tool settings',menu=self.tool_menu,style='Quiet.TMenubutton')
         self.dashboard=Dashboard(outer,self.new_download,self.cancel_job,self.open_log,theme=self.theme)
         self.dashboard.pack(fill='both',expand=True)
         footer=ttk.Frame(outer)
@@ -110,17 +119,22 @@ class App:
         if event is not None and event.widget is not self.root:
             return
         width=max(640,self.root.winfo_width())
-        compact=self.root.winfo_height()<600
+        height=self.root.winfo_height()
+        height=height if height>1 else 780  # Before first mapping Tk reports 1px.
+        compact=height<600
+        layout_key=(width,compact,self.theme.mode)
+        if getattr(self,'layout_key',None)==layout_key:
+            return
+        self.layout_key=layout_key
         self.outer.configure(padding=(12,10) if compact else (20,16))
         self.header.pack_configure(pady=(0,8) if compact else (0,14))
         self.caption_label.configure(wraplength=max(250,min(600,width-270)))
         self.tool_label.configure(wraplength=max(150,width-430))
         self.theme.style.configure('Title.TLabel',font=('Segoe UI',17 if width<800 else 20,'bold'))
         self.theme.style.configure('Metric.TLabel',font=('Segoe UI',16 if width<800 else 19,'bold'))
-        self.dashboard.fit_compact(self.root.winfo_height())
+        self.dashboard.fit_compact(height)
         self.dashboard.fit_columns(width)
         self.dashboard.summary_label.configure(wraplength=max(260,width-50))
-        self.dashboard.after_idle(self.dashboard.fit_detail)
 
     def toggle_theme(self):
         self.theme.toggle()
@@ -135,14 +149,22 @@ class App:
         self.tool_path=Path(path) if path else None
         if not busy:
             self.manager.tool=self.tool_path or BASE/'ovftool'/'ovftool.exe'
-        self.tool_status.set('OVF Tool found · exports available' if ready else 'OVF Tool missing · exports blocked')
+        self.tool_status.set('OVF Tool ready · exports available' if ready else 'OVF Tool missing · install it to enable exports')
         self.tool_label.configure(style='Success.TLabel' if ready else 'Error.TLabel')
         if ready:
             self.tool_download.pack_forget()
+            self.tool_browse.pack_forget()
+            self.tool_auto.pack_forget()
+            self.tool_manage.pack(side='right')
         else:
+            self.tool_manage.pack_forget()
+            self.tool_browse.pack(side='left',padx=(8,4))
+            self.tool_auto.pack(side='left')
             self.tool_download.pack(side='left',padx=(4,0))
         self.tool_browse.configure(state='disabled' if busy else 'normal')
         self.tool_auto.configure(state='disabled' if busy else 'normal')
+        self.tool_manage.configure(state='disabled' if busy else 'normal')
+        self.dashboard.set_tool_ready(ready)
         return ready
 
     def choose_tool(self):
@@ -239,21 +261,32 @@ class App:
         install_mousewheel(window)
 
     def poll(self):
+        # Keep input/paint callbacks responsive even if workers emit a burst.
+        # Samples change presentation only; locating the tool belongs to task
+        # transitions and explicit user actions, not every progress update.
+        self.root.after_cancel(self.timer)
+        deadline=time.perf_counter()+0.008
+        refresh_tool=False
         try:
-            while True:
+            for _ in range(128):
                 kind,payload=self.events.get_nowait()
                 if kind=='job':
-                    self.dashboard.handle(*payload)
-                    self.refresh_tool()
+                    self.dashboard.handle(*payload,defer=True)
+                    refresh_tool |= payload[1] not in ('sample','progress','status')
                 elif kind=='update':
                     self.updater.handle(*payload)
+                if time.perf_counter()>=deadline:
+                    break
         except queue.Empty:
             pass
+        self.dashboard.flush_updates()
+        if refresh_tool:
+            self.refresh_tool()
         if self.close_mode and self.exit_dialog is None and (self.manager.local_tools_stopped() if self.close_mode=='force' else not self.manager.unfinished()):
             self.finish_close()
             return
-        self.root.after_cancel(self.timer)
-        self.timer=self.root.after(100,self.poll)
+        delay=10 if not self.events.empty() else 100 if self.manager.unfinished() or self.updater.downloading else 400
+        self.timer=self.root.after(delay,self.poll)
 
     def close(self):
         if self.updater.downloading:

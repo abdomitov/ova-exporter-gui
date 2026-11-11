@@ -8,6 +8,12 @@ from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
 NS = {'v': 'urn:vim25', 's': 'http://schemas.xmlsoap.org/soap/envelope/'}
+MAX_API_REPLY = 32 * 1024 * 1024
+
+
+class _NoDTDTreeBuilder(ET.TreeBuilder):
+    def doctype(self, name, pubid, system):
+        raise RuntimeError('The server returned unsafe XML: DTD declarations are not accepted.')
 
 
 def endpoint(value):
@@ -17,7 +23,9 @@ def endpoint(value):
     if parsed.path not in ('', '/', '/ui', '/ui/', '/sdk') or parsed.query or parsed.fragment:
         raise ValueError('Enter the server address, without a VM path or query.')
     host = parsed.hostname
-    port = parsed.port or 443
+    port = parsed.port if parsed.port is not None else 443
+    if not 1 <= port <= 65535:
+        raise ValueError('The HTTPS port must be between 1 and 65535.')
     authority = ('[' + host + ']' if ':' in host else host) + (f':{port}' if port != 443 else '')
     return host, port, authority
 
@@ -29,7 +37,8 @@ def fingerprint(cert, algorithm='sha256'):
 
 def probe(address):
     host, port, _ = endpoint(address)
-    conn = http.client.HTTPSConnection(host, port, timeout=15, context=ssl._create_unverified_context())
+    # Certificate discovery sends no credentials; trust is reviewed separately.
+    conn = http.client.HTTPSConnection(host, port, timeout=15, context=ssl._create_unverified_context())  # nosec B323
     try:
         conn.connect()
         return conn.sock.getpeercert(binary_form=True)
@@ -53,7 +62,7 @@ class VSphere:
                     f'<s:Body><{method} xmlns="urn:vim25">{body}</{method}></s:Body></s:Envelope>')
         with self.lock:
             conn = http.client.HTTPSConnection(self.host, self.port, timeout=30,
-                                              context=ssl._create_unverified_context())
+                                              context=ssl._create_unverified_context())  # nosec B323 - exact certificate checked below, before request
             try:
                 conn.connect()
                 if conn.sock.getpeercert(binary_form=True) != self.certificate:
@@ -64,12 +73,16 @@ class VSphere:
                     headers['Cookie'] = self.cookie
                 conn.request('POST', '/sdk', envelope.encode('utf-8'), headers)
                 response = conn.getresponse()
-                data = response.read()
+                data = response.read(MAX_API_REPLY + 1)
+                if len(data) > MAX_API_REPLY:
+                    raise RuntimeError('The vSphere API response exceeds the supported size limit.')
                 cookie = response.getheader('Set-Cookie')
                 if cookie:
                     self.cookie = cookie.split(';', 1)[0]
                 try:
-                    root = ET.fromstring(data)
+                    # The custom target rejects DTDs before entity processing,
+                    # including encoded XML, without adding runtime packages.
+                    root = ET.fromstring(data, parser=ET.XMLParser(target=_NoDTDTreeBuilder()))  # nosec B314
                 except ET.ParseError:
                     raise RuntimeError(f'Server returned HTTP {response.status}, rather than a vSphere API response.') from None
                 fault = root.find('.//s:Fault', NS)
@@ -118,7 +131,8 @@ class VSphere:
                 for obj in result.findall('.//v:objects', NS):
                     props = {p.findtext('v:name', '', NS): p.find('v:val', NS)
                              for p in obj.findall('v:propSet', NS)}
-                    text = lambda key, default='': props[key].text if key in props and props[key].text is not None else default
+                    def text(key, default=''):
+                        return props[key].text if key in props and props[key].text is not None else default
                     if text('config.template') == 'true':
                         continue
                     disks = 0

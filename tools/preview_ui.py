@@ -24,14 +24,14 @@ socket.socket.connect_ex = blocked
 socket.create_connection = blocked
 subprocess.Popen = blocked
 
-import app as application
-from connection_settings import ConnectionSettings
-from secure_storage import WindowsDataProtection
+import app as application  # noqa: E402 - offline guards must be installed before app imports
+from connection_settings import ConnectionSettings  # noqa: E402
+from secure_storage import WindowsDataProtection  # noqa: E402
 
 ConnectionSettings.__init__ = blocked
 WindowsDataProtection.protect = blocked
 WindowsDataProtection.unprotect = blocked
-import wizard
+import wizard  # noqa: E402 - apply the guards before loading application modules
 wizard.probe = blocked
 wizard.VSphere = blocked
 
@@ -128,6 +128,14 @@ class PreviewApp(application.App):
         assert self.footer.winfo_ismapped()
         assert self.dashboard.summary_label.winfo_ismapped()
         assert self.dashboard.tree.winfo_height() >= 70
+        assert not self.dashboard.tree.winfo_ismapped()
+        assert self.dashboard.detail_scroll.winfo_ismapped()
+        self.dashboard.hide_details()
+        self.root.update_idletasks()
+        assert self.dashboard.tree.winfo_ismapped()
+        self.dashboard.toggle_details()
+        self.root.update_idletasks()
+        assert self.dashboard.detail_scroll.winfo_ismapped()
         assert tuple(self.dashboard.tree['displaycolumns']) == ('server','vm','progress','status','speed')
         self.root.geometry('1120x780')
         self.root.update()
@@ -154,30 +162,42 @@ class PreviewApp(application.App):
         assert len(form.tree.get_children()) == 4  # Running VM is filtered out.
         form.destroy_wizard()
         self.theme.mode = original
+        if '--light' in sys.argv:
+            self.theme.mode = 'light'
         self.theme.apply()
         print('PASS: fake dashboard + wizard; two themes; graph; statistics; narrow layouts; keyboard binding; powered-off filter', flush=True)
         if '--check' in sys.argv:
             self.finish_close()
-        elif '--missing-tool' in sys.argv:
+        elif '--missing-tool' in sys.argv or '--empty' in sys.argv:
             self.dashboard.tree.delete(*self.dashboard.tree.get_children())
             self.dashboard.cards.clear()
             self.dashboard.selected=None
             self.dashboard.hide_details()
             self.dashboard.cancel_selected.pack_forget()
             self.dashboard.log_button.configure(state='disabled')
+            self.dashboard.details_button.configure(state='disabled')
             self.dashboard.update_summary()
             self.manager.jobs.clear()
             self.manager.waiting.clear()
-            self.tool_locator=lambda *args:None
+            if '--missing-tool' in sys.argv:
+                self.tool_locator=lambda *args:None
             self.refresh_tool()
-            self.dashboard.empty.place(relx=0.5,rely=0.5,anchor='center')
+            self.dashboard.show_empty()
         elif '--compact' in sys.argv:
             self.root.geometry('640x420')
-        elif '--wizard-connect' in sys.argv or '--wizard-selection' in sys.argv:
+        elif '--error-state' in sys.argv:
+            job=self.jobs[0]
+            job.state='failed'
+            self.dashboard.handle(job.id,'failed',
+                'Illustrative failure: the server did not release the export lease. '
+                'Review the VM state with your administrator before retrying. '*5)
+        elif any(flag in sys.argv for flag in ('--wizard-connect','--wizard-selection','--wizard-no-results','--wizard-compact')):
             self.new_download()
-            self.wizard.root.geometry('740x620')
-            if '--wizard-selection' in sys.argv:
+            self.wizard.root.geometry('600x420' if '--wizard-compact' in sys.argv else '740x700')
+            if '--wizard-selection' in sys.argv or '--wizard-no-results' in sys.argv:
                 self.wizard.connect()
+                if '--wizard-no-results' in sys.argv:
+                    self.wizard.root.after(500,lambda:self.wizard.search.set('Example not found'))
         elif '--update-available' in sys.argv or '--update-ready' in sys.argv:
             from updates import Release, REPOSITORY
             self.updater.release=Release('9.0.0',f'https://github.com/{REPOSITORY}/releases/tag/v9.0.0',
@@ -192,6 +212,24 @@ class PreviewApp(application.App):
             self.updater.dialog.title('Update prompt — FAKE DATA PREVIEW')
             self.updater.dialog.protocol('WM_DELETE_WINDOW',self.finish_close)
             self.updater.dialog.bind('<Escape>',lambda event:self.finish_close())
+        if '--animate' in sys.argv and '--check' not in sys.argv:
+            self.animate()
+
+    def animate(self):
+        """Exercise real UI event handling with bounded synthetic progress."""
+        for job in self.jobs:
+            view=self.dashboard.cards[job.id]
+            if view.state != 'running':
+                continue
+            percent=min(100,view.percent+0.15)
+            speed=(32+12*math.sin(percent/2))*1_000_000
+            self.emit('job',(job.id,'progress',percent))
+            self.emit('job',(job.id,'sample',dict(speed=speed,bytes=int(percent*240_000_000),
+                                                elapsed=view.elapsed+0.125)))
+            if percent>=100:
+                job.state='done'
+                self.emit('job',(job.id,'done','Illustrative package completed. No file was created.'))
+        self.root.after(125,self.animate)
 
     def new_download(self):
         super().new_download()

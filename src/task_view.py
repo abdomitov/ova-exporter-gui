@@ -26,14 +26,16 @@ class TaskView:
             self.started = time.strftime('%H:%M:%S')
             self.detail = 'Preparing export…'
         elif kind == 'progress':
-            self.percent = max(self.percent, float(value))
+            self.percent = max(self.percent, min(100, float(value)))
             if self.state == 'running':
                 self.detail = 'Exporting virtual disk…'
         elif kind == 'sample' and self.state == 'running':
             self.speed, self.written, self.elapsed = value['speed'], value['bytes'], value['elapsed']
             self.peak = max(self.peak,self.speed)
             point = (self.percent,max(0,self.speed))
-            if self.history and self.history[-1][0] == self.percent:
+            # One point per percentage bucket bounds chart memory for long
+            # transfers, including sources that report fractional progress.
+            if self.history and int(self.history[-1][0]) == int(self.percent):
                 self.history[-1] = point
             else:
                 self.history.append(point)

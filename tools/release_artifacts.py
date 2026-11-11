@@ -17,8 +17,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'src'))
-from metadata import VERSION
-from tools.package_source import ROOT_FILES, EXTRA_FILES, OPTIONAL_IMAGES
+from metadata import VERSION  # noqa: E402 - standalone script bootstraps source paths above
+from tools.package_source import ROOT_FILES, EXTRA_FILES, OPTIONAL_IMAGES  # noqa: E402
 
 
 def sha256(path):
@@ -84,7 +84,8 @@ def verify_build():
     native = json.loads((ROOT / 'artifacts/ci/installer-check.json').read_text())
     if frozen.get('fake_ui_check') != 'passed' or native.get('candidate') != VERSION:
         raise ValueError('Required build check reports are absent or mismatched.')
-    for check in ('fresh_install', 'parent_exit_wait', 'upgrade', 'reopen', 'uninstall'):
+    for check in ('fresh_install', 'fresh_launch_self_test', 'fresh_uninstall',
+                  'parent_exit_wait', 'upgrade', 'reopen', 'uninstall'):
         if native.get(check) != 'passed':
             raise ValueError('Installer check did not pass: ' + check)
     commit = os.environ.get('GITHUB_SHA', '')

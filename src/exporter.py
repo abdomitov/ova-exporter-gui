@@ -5,6 +5,47 @@ import tarfile
 from collections import deque
 from pathlib import PurePosixPath
 
+MAX_TAR_METADATA = 2_000_000
+MAX_TAR_METADATA_TOTAL = 4_000_000
+MAX_TAR_HEADERS = 10_000
+MAX_TAR_HEADER_DEPTH = 32
+
+
+class _OVATarInfo(tarfile.TarInfo):
+    """Bound extension headers before tarfile reads their bodies into memory.
+
+    Streaming payload hashing alone does not bound PAX/GNU metadata parsing.
+    These hooks also reject sparse encodings, which OVF disk files do not need.
+    """
+    def _proc_member(self, archive):
+        archive._ova_headers = getattr(archive, '_ova_headers', 0) + 1
+        if archive._ova_headers > MAX_TAR_HEADERS:
+            raise ValueError('OVA header count exceeds the supported limit.')
+        if self.size < 0:
+            raise ValueError('OVA member has a negative size.')
+        if self.type == tarfile.GNUTYPE_SPARSE:
+            raise ValueError('Sparse TAR encodings are not supported in OVA packages.')
+        extended = self.type in (tarfile.XHDTYPE, tarfile.XGLTYPE, tarfile.SOLARIS_XHDTYPE,
+                                 tarfile.GNUTYPE_LONGNAME, tarfile.GNUTYPE_LONGLINK)
+        if not extended:
+            return super()._proc_member(archive)
+        archive._ova_metadata = getattr(archive, '_ova_metadata', 0) + self.size
+        depth = getattr(archive, '_ova_depth', 0)
+        if (self.size > MAX_TAR_METADATA or archive._ova_metadata > MAX_TAR_METADATA_TOTAL
+                or depth >= MAX_TAR_HEADER_DEPTH):
+            raise ValueError('OVA metadata exceeds the supported size/depth limit.')
+        archive._ova_depth = depth + 1
+        try:
+            return super()._proc_member(archive)
+        finally:
+            archive._ova_depth = depth
+
+    def _proc_gnusparse_00(self, *args):
+        raise ValueError('Sparse TAR encodings are not supported in OVA packages.')
+
+    _proc_gnusparse_01 = _proc_gnusparse_00
+    _proc_gnusparse_10 = _proc_gnusparse_00
+
 
 def archive_name_key(name):
     """Reject ambiguous paths before declaring an archive verified."""
@@ -68,7 +109,7 @@ def verify_ova(path, status=lambda value: None, cancel_check=lambda: None):
     disk = False
     seen = set()
     archive_input = {'fileobj': path} if hasattr(path, 'read') else {'name': path}
-    with tarfile.open(mode='r|', **archive_input) as archive:
+    with tarfile.open(mode='r|', tarinfo=_OVATarInfo, **archive_input) as archive:
         for index, member in enumerate(archive):
             cancel_check()
             if not member.isfile():

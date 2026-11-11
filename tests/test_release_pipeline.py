@@ -9,6 +9,7 @@ import zipfile
 from unittest.mock import Mock, patch
 
 from tools.ci_installer_check import ensure_runner
+from tools import ci_installer_check
 from tools.release_artifacts import (create_draft, expected_files, publish_reviewed,
                                      validate_publish_choice, verify_files, verify_source)
 from metadata import VERSION
@@ -59,6 +60,17 @@ class ReleasePipelineTests(unittest.TestCase):
             with patch.dict(os.environ, values, clear=True):
                 with self.assertRaises(RuntimeError):
                     ensure_runner()
+
+    def test_installer_lifecycle_guard_runs_before_any_file_download_or_process(self):
+        with patch.object(ci_installer_check,'ensure_runner',side_effect=RuntimeError('fixture refusal')), \
+                patch.object(ci_installer_check.subprocess,'run') as execute, \
+                patch.object(ci_installer_check.urllib.request,'urlopen') as download, \
+                patch.object(Path,'mkdir') as create:
+            with self.assertRaisesRegex(RuntimeError,'fixture refusal'):
+                ci_installer_check.run()
+        execute.assert_not_called()
+        download.assert_not_called()
+        create.assert_not_called()
 
     def test_no_release_mutations_from_local_or_pull_request_context(self):
         with patch.dict(os.environ, {'GITHUB_ACTIONS': 'false'}, clear=True), \

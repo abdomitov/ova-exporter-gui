@@ -6,7 +6,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/"src"))
-from metadata import VERSION
+from metadata import VERSION  # noqa: E402 - standalone script bootstraps src above
 
 ROOT_FILES = (
     'launch.pyw', 'Start OVA Exporter.cmd', 'Start OVA Exporter.vbs',
@@ -20,13 +20,13 @@ APP_FILES = tuple('src/'+name for name in (
     'transfer_ui.py','ui_assets.py','vsphere.py','wizard.py','updates.py','update_ui.py',
 ))
 TEST_FILES = tuple('tests/'+name for name in (
-    'test_app.py','test_cancellation.py','test_connection_settings.py','test_jobs.py','test_ui.py','test_updates.py','test_release_pipeline.py',
+    'test_app.py','test_cancellation.py','test_connection_settings.py','test_jobs.py','test_ui.py','test_ui_performance.py','test_qa_regressions.py','test_updates.py','test_release_pipeline.py','test_security.py',
 ))
 EXTRA_FILES = APP_FILES+TEST_FILES+(
-    'tools/preview_ui.py','tools/package_source.py','tools/offline_tests.py',
+    'tools/preview_ui.py','tools/benchmark_ui.py','tools/package_source.py','tools/offline_tests.py',
     'tools/make_icons.py','tools/runtime_licenses.py','tools/build_windows.ps1','tools/check_update_installer.py',
     'tools/ci_compiler.ps1','tools/ci_installer_check.py','tools/release_artifacts.py',
-    'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/WINDOWS_INSTALLER.md','docs/RELEASING.md','docs/DEVOPS_PATH.md',
+    'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/UI_REVIEW.md','docs/QA_REVIEW.md','docs/SECURITY_REVIEW.md','docs/WINDOWS_INSTALLER.md','docs/RELEASING.md','docs/DEVOPS_PATH.md',
     '.github/ISSUE_TEMPLATE/bug_report.md','.github/PULL_REQUEST_TEMPLATE.md',
     '.github/workflows/offline-tests.yml','.github/workflows/release-build.yml','.github/workflows/publish-release.yml',
     'assets/logo.svg','assets/logo.png','assets/app.ico',

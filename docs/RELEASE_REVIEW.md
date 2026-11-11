@@ -1,4 +1,52 @@
-# Release review — 2026-11-07
+# Release review — 2026-11-11
+
+## 2.3.5 security and UI update
+
+Includes the UI and QA improvements reviewed below, certificate approval defaulting
+to No, and bounded TAR metadata verification. Ordinary PAX/GNU long-name archives
+remain supported. See [security review](SECURITY_REVIEW.md) for findings and limits.
+166 guarded offline tests pass locally. Release CI must validate this exact commit
+and installer before publication. No live VMware operation is part of release CI.
+
+## 2.3.4 QA hardening candidate
+
+The full review reproduced and fixed blank destination fallback, destination
+disconnect handling, temporary output filename overflow and port-zero fallback.
+SOAP replies are now bounded and DTDs are rejected without new runtime packages.
+The guarded test runner fails on unexpected Tk callback errors. Existing UI,
+cancellation/cleanup safeguards and session/credential handling are preserved.
+
+146 offline tests, including native in-memory DPAPI and mocked full export
+pipelines, pass locally. Configured lint, reviewed medium/high static security
+checks and both pinned/resolved build dependency audits pass. Coverage is 83%
+combined statement/branch. See [QA findings and limits](QA_REVIEW.md) for scope,
+reproduction, installer CI and remaining live-lab checks. This is a candidate;
+publication is a separate step.
+
+## 2.3.3 UI responsiveness candidate
+
+Refines the existing native UI with bounded event processing, batched display
+updates, fewer idle polls and bounded speed-history memory. Short windows switch
+between task list and details; larger windows retain a user-adjustable split.
+Filtering is debounced, the VM chooser has more room, and long diagnostics no
+longer cover the chart. No runtime dependencies were added and VMware operation
+or cancellation semantics were not changed.
+
+The visual update introduces a compact summary strip, integrated header menus,
+an OVF Tool settings menu, denser task rows and a clearer progress rail with
+aligned transfer statistics. Native light/dark themes remain available.
+
+Setup now uses full-width labeled credential fields with a compact arrangement
+on short windows, highlighted steps, grouped destination controls, Ctrl+F search
+and clear empty states. Busy/error messages stay visible; routine duplicates
+are hidden. Setup dialogs stay attached to their window. No password storage or
+VMware execution behavior was changed.
+
+133 guarded offline tests, the source fake-data UI check and the frozen app's
+fake-data check passed locally. The Windows app and installer compile. No real
+VMware operation or local installation/upgrade was performed in this review.
+See [UI review and measured limitations](UI_REVIEW.md). This is a local release
+candidate; publication and clean-machine installer checks are separate steps.
 
 ## 2.3.2 streamlined installed-app upgrades
 

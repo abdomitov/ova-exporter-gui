@@ -100,8 +100,10 @@ class TransferPanel(ttk.Frame):
         ink = c['negative'] if problem else c['warning'] if self.phase == 'done_warning' else c['positive']
         canvas.configure(highlightbackground=c['border'])
         canvas.create_rectangle(0, 0, width, height, fill=c['surface'], outline='')
+        left,right=20,width-20
+        canvas.create_rectangle(left,80,right,88,fill=fill,outline='')
         if self.value:
-            canvas.create_rectangle(0, 0, width * self.value / 100, height, fill=fill, outline='', tags='progress_fill')
+            canvas.create_rectangle(left,80,left+(right-left)*self.value/100,88,fill=ink,outline='',tags='progress_fill')
         title = {
             'idle':'Ready to export', 'preparing':'Preparing export', 'queued':'Queued for export',
             'cancelling':'Cancelling export', 'cleaning':'Checking server cleanup',
@@ -113,7 +115,7 @@ class TransferPanel(ttk.Frame):
         canvas.create_text(20, 17, text=title, width=width-185, anchor='nw',
                            fill=c['text'], font=('Segoe UI', 14, 'bold'))
         if self.phase != 'idle':
-            canvas.create_text(width-20, 53, text=f'{self.value:g}%', anchor='ne',
+            canvas.create_text(width-20, 17, text=f'{self.value:g}%', anchor='ne',
                                fill=ink, font=('Segoe UI', 26, 'bold'))
         eta = {
             'idle':'Progress and speed will appear here.', 'queued':'Waiting for an export slot',
@@ -132,13 +134,13 @@ class TransferPanel(ttk.Frame):
                    ('WRITTEN', size_text(self.written)), ('ELAPSED', duration_text(self.elapsed))]
         for index, (label, value) in enumerate(metrics):
             x = 20 + index * (width-40)/3
-            canvas.create_text(x, 91, text=label, anchor='nw', fill=c['text'], font=('Segoe UI', 8, 'bold'))
-            canvas.create_text(x, 109, text=value, anchor='nw', fill=c['text'], font=('Segoe UI', 13, 'bold'))
-        canvas.create_text(20, 140, text=self.detail, width=width-170, anchor='nw',
+            canvas.create_text(x, 96, text=label, anchor='nw', fill=c['muted'], font=('Segoe UI', 8, 'bold'))
+            canvas.create_text(x, 114, text=value, anchor='nw', fill=c['text'], font=('Segoe UI', 13, 'bold'))
+        canvas.create_text(20, 146, text=self.detail, width=width-170, anchor='nw',
                            fill=c['text'], font=('Segoe UI', 9), tags='transfer_detail')
-        canvas.create_text(width-20, 143, text=f'Peak {self.peak_speed/1_000_000:.1f} MB/s', anchor='ne',
+        canvas.create_text(width-20, 146, text=f'Peak {self.peak_speed/1_000_000:.1f} MB/s', anchor='ne',
                            fill=c['text'], font=('Segoe UI', 9), tags='speed_peak')
-        left, right, top, bottom = 20, width-20, 174, height-16
+        left, right, top, bottom = 20, width-20, 176, height-16
         for fraction in (0, 0.5, 1):
             y = bottom - (bottom-top)*fraction
             canvas.create_line(left,y,right,y,fill=c['grid'],tags='speed_grid')

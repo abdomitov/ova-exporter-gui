@@ -5,6 +5,8 @@ import sys
 import tempfile
 import unittest
 import unittest.mock  # Load asyncio's Windows Popen subclass before installing guards.
+import tkinter as tk
+import traceback
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,8 +35,19 @@ def run():
         original(self,directory,protector)
     ConnectionSettings.__init__ = isolated_settings
     suite=unittest.defaultTestLoader.discover(str(ROOT/'tests'),pattern='test_*.py')
-    result=unittest.TextTestRunner(verbosity=2).run(suite)
-    return result.wasSuccessful()
+    callback_errors=[]
+    original_callback=tk.Tk.report_callback_exception
+    def callback_failed(self, kind, value, trace):
+        callback_errors.append(value)
+        traceback.print_exception(kind,value,trace)
+    tk.Tk.report_callback_exception=callback_failed
+    try:
+        result=unittest.TextTestRunner(verbosity=2).run(suite)
+    finally:
+        tk.Tk.report_callback_exception=original_callback
+    if callback_errors:
+        print(f'FAIL: {len(callback_errors)} unexpected Tk callback error(s).',file=sys.stderr)
+    return result.wasSuccessful() and not callback_errors
 
 
 if __name__=='__main__':

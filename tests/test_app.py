@@ -3,7 +3,6 @@ import io
 import tarfile
 import tempfile
 import unittest
-import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch

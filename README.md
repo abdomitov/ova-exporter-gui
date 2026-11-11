@@ -8,13 +8,14 @@ Independent community project. Not affiliated with or endorsed by Broadcom or VM
 
 Provided as is under the MIT license. See [responsibility and third-party terms](#license-responsibility-and-third-party-terms).
 
-**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.3.2/OVA-Exporter-GUI-2.3.2-Windows-x64-Setup.exe)**
+**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.3.5/OVA-Exporter-GUI-2.3.5-Windows-x64-Setup.exe)**
 
-[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.3.2)
+[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.3.5)
 
 This is a preview release for Windows 10/11 x64. Python/Tk are included in the
 installer; VMware OVF Tool is a separate requirement. The installer is unsigned,
-and clean-machine installation/live VMware validation remain release checks.
+and live VMware validation remains a release check. Fresh installation and upgrade
+are checked on disposable GitHub-hosted Windows runners.
 macOS and Linux downloads are not available yet.
 
 ## Features
