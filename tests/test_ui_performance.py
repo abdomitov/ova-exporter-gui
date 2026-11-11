@@ -268,9 +268,24 @@ class ResponsiveUITests(unittest.TestCase):
         self.assertGreater(body.canvas.yview()[0],0)
 
     def test_short_window_switches_between_list_and_details_without_tiny_panes(self):
+        def resize(width, height):
+            self.root.geometry(f'{width}x{height}')
+            settled=tk.BooleanVar(self.root,False)
+            attempts=0
+            def check():
+                nonlocal attempts
+                attempts+=1
+                if ((self.root.winfo_width(),self.root.winfo_height())==(width,height)
+                        or attempts>=100):
+                    settled.set(True)
+                else:
+                    self.root.after(20,check)
+            self.root.after(20,check)
+            self.root.wait_variable(settled)
+            self.assertEqual((self.root.winfo_width(),self.root.winfo_height()),(width,height))
+            self.root.update()
         self.root.deiconify()
-        self.root.geometry('640x420')
-        self.root.update()
+        resize(640,420)
         self.app.resize_layout()
         self.root.update_idletasks()
         dashboard=self.app.dashboard
@@ -281,8 +296,7 @@ class ResponsiveUITests(unittest.TestCase):
         self.assertTrue(dashboard.tree.winfo_ismapped())
         self.assertFalse(dashboard.detail_scroll.winfo_ismapped())
         dashboard.details_button.invoke()
-        self.root.geometry('1000x760')
-        self.root.update()
+        resize(1000,760)
         self.app.resize_layout()
         self.root.update_idletasks()
         self.assertEqual(len(dashboard.panes.panes()),2)
