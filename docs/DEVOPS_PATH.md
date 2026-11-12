@@ -74,7 +74,7 @@ Replace `RUN_ID` with the actual numeric run ID. The workflow:
 3. Downloads a fixed Inno Setup version, verifies its pinned SHA-256 and publisher signature, and provisions it on the disposable runner.
 4. Builds the app, runtime license texts and Windows installer.
 5. Runs the frozen app with its fake-only self-test.
-6. Installs the pinned public 2.3.1 baseline into a new CI directory, runs the actual candidate update, verifies the replaced app and reopen, then uninstalls it. No VMware credentials or servers are used. The script refuses local or self-hosted runners.
+6. Installs the candidate into a fresh CI directory, checks installed startup and uninstalls it. Separately installs the pinned public 2.3.1 baseline, runs the actual candidate update, verifies parent-exit waiting, the replaced app and reopening, then uninstalls it. No VMware credentials or servers are used. The script refuses local or self-hosted runners.
 7. Verifies the exact source/archive files, checksums and check reports; writes `build-manifest.json` with the commit, workflow run and runtime versions.
 8. Keeps the small release files and diagnostic reports as artifacts for seven days.
 

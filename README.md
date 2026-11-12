@@ -36,12 +36,14 @@ This release supports exporting to a local OVA. It does not implement VM deploym
 
 ## Screenshots
 
-All screenshots use invented VM names and documentation-only server addresses.
+Captured from the **2.3.5 UI** using the guarded fake-data preview. VM names,
+addresses and progress are illustrative; no real infrastructure or credentials
+appear in these images.
 
 ![Dark dashboard showing OVA export progress and transfer speed history](docs/images/dashboard-dark.jpg)
 
 <details>
-<summary>Light theme, compact layout and connection form</summary>
+<summary>Light theme, compact layout, connection and VM selection</summary>
 
 ![Missing OVF Tool status with custom-location and detection controls](docs/images/tool-missing.jpg)
 
@@ -50,6 +52,8 @@ All screenshots use invented VM names and documentation-only server addresses.
 ![Compact dashboard at 640 by 420 pixels](docs/images/dashboard-compact.jpg)
 
 ![Connection form with a masked-by-default password input](docs/images/new-export-dark.jpg)
+
+![Powered-off VM filter, selected example VM and OVA destination](docs/images/vm-selection-dark.jpg)
 
 </details>
 
@@ -85,8 +89,8 @@ under the app's local data directory. A checksum is an integrity check, not a
 publisher signature: installers remain unsigned. A downloaded installer is checked
 again before launch. VMware OVF Tool is updated separately by the user.
 
-**Existing 2.2.0 and earlier users must install 2.3.0 manually once** to receive
-this functionality. Checks currently inspect the 30 most recent published GitHub
+**Users on 2.2.0 and earlier should install the current release manually once** to
+receive this functionality; no intermediate version is required. Checks currently inspect the 30 most recent published GitHub
 releases and offer only releases with a complete Windows installer/checksum pair.
 
 **Maintainers:** no separate update server is required. A source push alone does
@@ -96,7 +100,7 @@ for the build, release and installed-app validation steps.
 
 ## Requirements
 
-- Windows 10/11 x64 is the target platform. Clean-machine Windows 10/11 installer testing remains unverified.
+- Windows 10/11 x64 is the target platform. Fresh install, upgrade and uninstall passed on a disposable GitHub-hosted Windows runner. Windows 10 and all end-user configurations remain unverified.
 - Source users need Python 3.10 or newer with Tkinter. The Windows installer includes Python/Tk; users of that installer do not need a separate Python installation. No third-party Python packages are required to run the source app.
 - [VMware OVF Tool](https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/), installed separately under its own license.
 - Access to the required VMware management and export endpoints and an account permitted to read inventory and export the chosen VM.
@@ -197,6 +201,9 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) and [the architecture notes](docs/ARCHIT
 
 Run `py -3 tools/offline_tests.py` for guarded offline regressions. See the
 [release review](docs/RELEASE_REVIEW.md) for findings, fixes and unverified lab checks.
+The [security review](docs/SECURITY_REVIEW.md) describes the tested attack fixtures
+and remaining risks; the [repository review](docs/REPOSITORY_REVIEW.md) records
+the current documentation, screenshot and release-automation checks.
 
 An isolated visual preview is available without credentials or VMware binaries:
 
