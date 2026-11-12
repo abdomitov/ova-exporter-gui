@@ -141,6 +141,15 @@ def validate_publish_choice(tag, commit, confirmed):
         raise ValueError('Publishing requires explicit confirmation, the current app tag and an exact commit.')
 
 
+def reviewed_draft(rows, tag, commit):
+    """Drafts require the authenticated release list, not the published-tag API."""
+    matches = [row for row in rows if isinstance(row, dict) and row.get('tag_name') == tag] if isinstance(rows, list) else []
+    if (len(matches) != 1 or matches[0].get('draft') is not True
+            or matches[0].get('target_commitish') != commit):
+        raise ValueError('This must be a new draft targeting the exact reviewed commit.')
+    return matches[0]
+
+
 def publish_reviewed():
     if (os.environ.get('GITHUB_ACTIONS') != 'true'
             or os.environ.get('GITHUB_EVENT_NAME') != 'workflow_dispatch'
@@ -156,9 +165,9 @@ def publish_reviewed():
         return json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/{path}'], text=True))
     if api('git/ref/heads/main')['object']['sha'] != commit:
         raise ValueError('Main moved after this workflow started. Rebuild/review the newer source.')
-    release = api('releases/tags/' + tag)
-    if release.get('draft') is not True or release.get('target_commitish') != commit:
-        raise ValueError('This must be a new draft targeting the exact reviewed commit.')
+    # GET releases/tags/{tag} does not find an unpublished draft without a tag.
+    # Fail closed if the exact draft is not among the 100 most recent releases.
+    reviewed_draft(api('releases?per_page=100'), tag, commit)
     directory = Path(tempfile.mkdtemp(prefix='ova-reviewed-release-', dir=os.environ['RUNNER_TEMP']))
     command = ['gh', 'release', 'download', tag, '--repo', repository, '--dir', str(directory)]
     for name in (*expected_files(VERSION), 'build-manifest.json'):
@@ -175,7 +184,8 @@ def publish_reviewed():
     if checks.get('frozen') != 'passed' or checks.get('source') != 'passed':
         raise ValueError('Required build evidence is missing.')
     if any(native.get(name) != 'passed' for name in
-           ('fresh_install', 'parent_exit_wait', 'upgrade', 'reopen', 'uninstall')):
+           ('fresh_install', 'fresh_launch_self_test', 'fresh_uninstall',
+            'parent_exit_wait', 'upgrade', 'reopen', 'uninstall')):
         raise ValueError('Installer validation did not pass.')
     run_id = str(manifest.get('run_id', ''))
     if not run_id.isdigit():

@@ -12,6 +12,11 @@ After reviewing that draft and its exact build commit, **Publish reviewed releas
 can publish it only with the matching tag, current-main commit and explicit
 `confirm_publish=true`. It rechecks the source/files, build manifest and successful
 build run. This is a manual approval boundary; nothing auto-publishes on a push.
+Draft lookup uses the authenticated release list and requires an exact tag,
+draft flag and target commit. If the draft is not among the 100 most recent
+releases, publication fails closed. Version 2.3.5 used the documented manual
+path after the old published-tag lookup returned 404; its build and installer
+checks passed. The lookup regression is covered by offline tests.
 See [the DevOps learning path](DEVOPS_PATH.md) for commands, scope and downsides.
 The manual commands below remain useful for understanding and recovery.
 

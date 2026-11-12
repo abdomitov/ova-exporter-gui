@@ -26,7 +26,7 @@ EXTRA_FILES = APP_FILES+TEST_FILES+(
     'tools/preview_ui.py','tools/benchmark_ui.py','tools/package_source.py','tools/offline_tests.py',
     'tools/make_icons.py','tools/runtime_licenses.py','tools/build_windows.ps1','tools/check_update_installer.py',
     'tools/ci_compiler.ps1','tools/ci_installer_check.py','tools/release_artifacts.py',
-    'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/UI_REVIEW.md','docs/QA_REVIEW.md','docs/SECURITY_REVIEW.md','docs/WINDOWS_INSTALLER.md','docs/RELEASING.md','docs/DEVOPS_PATH.md',
+    'docs/ARCHITECTURE.md','docs/RELEASE_REVIEW.md','docs/UI_REVIEW.md','docs/QA_REVIEW.md','docs/SECURITY_REVIEW.md','docs/REPOSITORY_REVIEW.md','docs/WINDOWS_INSTALLER.md','docs/RELEASING.md','docs/DEVOPS_PATH.md',
     '.github/ISSUE_TEMPLATE/bug_report.md','.github/PULL_REQUEST_TEMPLATE.md',
     '.github/workflows/offline-tests.yml','.github/workflows/release-build.yml','.github/workflows/publish-release.yml',
     'assets/logo.svg','assets/logo.png','assets/app.ico',

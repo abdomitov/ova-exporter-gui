@@ -11,12 +11,31 @@ from unittest.mock import Mock, patch
 from tools.ci_installer_check import ensure_runner
 from tools import ci_installer_check
 from tools.release_artifacts import (create_draft, expected_files, publish_reviewed,
-                                     validate_publish_choice, verify_files, verify_source)
+                                     reviewed_draft, validate_publish_choice, verify_files, verify_source)
 from metadata import VERSION
 from tools.runtime_licenses import license_urls, runtime_versions
 
 
 class ReleasePipelineTests(unittest.TestCase):
+    def test_reviewed_draft_uses_exact_tag_commit_and_explicit_draft_state(self):
+        draft = dict(tag_name='v' + VERSION, draft=True, target_commitish='a' * 40)
+        self.assertIs(reviewed_draft([dict(tag_name='other'), draft], 'v' + VERSION, 'a' * 40), draft)
+        for rows in ([], {}, [draft, draft], [dict(draft, draft=False)],
+                     [dict(draft, draft='true')], [dict(draft, target_commitish='b' * 40)],
+                     [dict(draft, tag_name='v0.0.1')]):
+            with self.subTest(rows=rows), self.assertRaisesRegex(ValueError, 'new draft'):
+                reviewed_draft(rows, 'v' + VERSION, 'a' * 40)
+
+    def test_publish_looks_up_draft_through_authenticated_release_list(self):
+        responses = [json.dumps({'object': {'sha': 'a' * 40}}), '[]']
+        with patch.dict(os.environ, self.publish_environment(), clear=True), \
+                patch('tools.release_artifacts.subprocess.check_output', side_effect=responses) as api, \
+                patch('tools.release_artifacts.subprocess.run') as mutate:
+            with self.assertRaisesRegex(ValueError, 'new draft'):
+                publish_reviewed()
+        self.assertTrue(api.call_args.args[0][-1].endswith('/releases?per_page=100'))
+        mutate.assert_not_called()
+
     def test_runtime_version_probe_uses_tk_initialization_and_always_closes_it(self):
         root=Mock()
         root.tk.eval.side_effect=lambda command: {'info patchlevel': '8.6.17',

@@ -16,8 +16,10 @@ The custom executable location is encrypted and remembered; no environment varia
 or restart is required. A file-presence check is not a full compatibility test.
 
 This installer is unsigned. Windows may display an unknown-publisher/SmartScreen
-warning. Code signing and clean Windows 10/11 installation/uninstallation tests
-remain release tasks; do not advertise this build as certified or warning-free.
+warning. Version 2.3.5 passed fresh install, startup, upgrade, reopen and uninstall
+on a disposable GitHub-hosted Windows runner. Windows 10 and all end-user
+configurations remain unverified; this is not certification. Code signing
+remains a future release task.
 
 Version 2.3.0 includes update notifications and user-confirmed installer downloads.
 Use the Updates menu for a manual check or to disable automatic startup checks.
@@ -27,7 +29,8 @@ are restricted to the project's GitHub release assets over HTTPS, with size and
 SHA-256 verification (repeated before launching setup). Installers remain unsigned;
 this does not establish publisher identity or protect against a compromised release
 account. The updater never downloads VMware OVF Tool or restarts host services.
-Users on older app versions must install 2.3.0 manually to obtain the updater.
+Users on 2.2.0 and earlier can install the current release manually to obtain
+the updater; installing an intermediate version is unnecessary.
 
 Maintainers publish higher-version releases through GitHub; see
 [Publishing updates](RELEASING.md). From an installed 2.3.2 app, the Update button
@@ -39,7 +42,7 @@ other processes are not closed or force-stopped. Shortcut selections are reused.
 Update mode requires an existing executable/uninstaller in that folder and a
 valid parent PID before copying files. Source/portable copies keep the normal UI.
 
-The old 2.3.0/2.3.1 updater still opens the full wizard once to obtain 2.3.2. The
+The old 2.3.0/2.3.1 updater still opens the full wizard once to obtain a current release. The
 streamlined behavior applies to updates initiated by the newer app. Manually
 opening the installer for an initial installation keeps its normal wizard.
 
