@@ -1,4 +1,4 @@
-"""Accordion sections with persistent headers and scrollable compact bodies."""
+"""Scrollable bodies and one wheel router per window."""
 import tkinter as tk
 from tkinter import ttk
 
@@ -9,8 +9,6 @@ def install_mousewheel(root):
         try:
             widget = root.winfo_containing(event.x_root, event.y_root) or event.widget
         except (tk.TclError, KeyError):
-            return
-        if isinstance(widget, ttk.Combobox):
             return
         delta = getattr(event, 'delta', 0)
         units = -int(delta / 120) if abs(delta) >= 120 else (-1 if delta > 0 else 1)
@@ -25,6 +23,9 @@ def install_mousewheel(root):
                 view = node.canvas.yview()
                 if (units < 0 and view[0] > 0) or (units > 0 and view[1] < 1):
                     node.canvas.yview_scroll(units * 3, 'units')
+                    return 'break'
+            elif hasattr(node, 'wheel_units'):
+                if not horizontal and node.wheel_units(units * 3):
                     return 'break'
             elif isinstance(node, (ttk.Treeview, tk.Text)):
                 view = node.xview() if horizontal else node.yview()
@@ -62,20 +63,28 @@ def install_mousewheel(root):
 
 
 class ScrollBody(ttk.Frame):
-    def __init__(self, parent):
-        super().__init__(parent)
+    def __init__(self, parent, tone='', padding=(10, 8)):
+        super().__init__(parent, style=tone + 'TFrame')
+        self.tone = tone
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
-        self.canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0, bg='#eef2f6', width=1, height=1)
+        self.canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0, width=1, height=1)
         self.canvas.grid(row=0, column=0, sticky='nsew')
         self.scroll = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
         self.scroll.grid(row=0, column=1, sticky='ns')
-        self.inner = ttk.Frame(self.canvas, padding=(10, 8))
+        self.inner = ttk.Frame(self.canvas, padding=padding, style=tone + 'TFrame')
         self.window = self.canvas.create_window(0, 0, anchor='nw', window=self.inner)
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.pending = None
         self.canvas.bind('<Configure>', self.schedule)
         self.inner.bind('<Configure>', self.schedule)
+        theme = getattr(self._root(), '_ova_theme', None)
+        if theme:
+            theme.register(self)
+
+    def apply_theme(self, colors):
+        key = {'': 'bg', 'Surface.': 'surface', 'Sunken.': 'sunken'}[self.tone]
+        self.canvas.configure(background=colors[key])
 
     def schedule(self, event=None):
         if self.pending is None:
@@ -101,40 +110,14 @@ class ScrollBody(ttk.Frame):
         height = max(self.inner.winfo_reqheight(), self.canvas.winfo_height())
         self.canvas.itemconfigure(self.window, width=width, height=height)
         self.canvas.configure(scrollregion=(0, 0, width, height))
+        # Show the bar only while there is something to scroll to.
+        if height > self.canvas.winfo_height() > 1:
+            self.scroll.grid()
+        else:
+            self.scroll.grid_remove()
 
     def destroy(self):
         if self.pending is not None:
             self.after_cancel(self.pending)
             self.pending = None
         super().destroy()
-
-
-class Accordion(ttk.Frame):
-    def __init__(self, parent, titles, command):
-        super().__init__(parent)
-        self.columnconfigure(0, weight=1)
-        self.titles = titles
-        self.headers = {}
-        self.bodies = {}
-        self.open_step = None
-        for number, title in titles.items():
-            row = (number - 1) * 2
-            header = ttk.Button(self, text='+  ' + title, command=lambda n=number: command(n), style='Section.TButton')
-            header.grid(row=row, column=0, sticky='ew', pady=(3, 0))
-            self.headers[number] = header
-            self.bodies[number] = ScrollBody(self)
-            self.bodies[number].grid(row=row + 1, column=0, sticky='nsew')
-            self.bodies[number].grid_remove()
-
-    def select(self, number):
-        self.open_step = number
-        for step, body in self.bodies.items():
-            row = (step - 1) * 2 + 1
-            self.rowconfigure(row, weight=1 if number == step else 0)
-            self.headers[step].configure(text=('−  ' if number == step else '+  ') + self.titles[step],
-                                         style='ActiveSection.TButton' if number==step else 'Section.TButton')
-            if number == step:
-                body.grid()
-                body.schedule()
-            else:
-                body.grid_remove()

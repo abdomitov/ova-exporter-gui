@@ -42,42 +42,10 @@ def configure_checkboxes(root, style, palette=None):
     off, on, off_disabled, on_disabled = images
     if not existing:
         style.element_create('OvaCheck.indicator', 'image', off,
-                             ('disabled', 'selected', on_disabled), ('disabled', off_disabled), ('selected', on))
+                             ('disabled', 'selected', on_disabled), ('disabled', off_disabled), ('selected', on),
+                             width=size + round(size / 2), sticky='w')
     style.layout('Ova.TCheckbutton', [('Checkbutton.padding', {'sticky': 'nswe', 'children': [
         ('OvaCheck.indicator', {'side': 'left', 'sticky': ''}),
         ('Checkbutton.focus', {'side': 'left', 'sticky': 'w', 'children': [
             ('Checkbutton.label', {'sticky': 'nswe'})]})]})])
     style.configure('Ova.TCheckbutton', padding=(0, 2), indicatorspace=5)
-
-
-def password_eye_images(root, color='#64748b'):
-    """Small transparent eye icons drawn locally, without emoji/font reliance."""
-    size = max(18, round(13 * float(root.tk.call('tk', 'scaling'))))
-    scale = size / 24
-    height = round(20 * scale)
-    images = []
-    for slashed in (False, True):
-        pixels = {}
-        def point(x, y):
-            px, py = round(x * scale), round(y * scale)
-            if 0 <= px < size and 0 <= py < height:
-                pixels[(px, py)] = color
-        for step in range(73):
-            x = 3 + 18 * step / 72
-            curve = 6 * (1 - ((x - 12) / 9) ** 2)
-            point(x, 10 - curve)
-            point(x, 10 + curve)
-        for x in range(9, 16):
-            for y in range(7, 14):
-                if (x - 12) ** 2 + (y - 10) ** 2 <= 8:
-                    point(x, y)
-        if slashed:
-            for step in range(65):
-                point(4 + 16 * step / 64, 3 + 14 * step / 64)
-                point(4 + 16 * step / 64, 4 + 14 * step / 64)
-        image = tk.PhotoImage(master=root, width=size, height=height)
-        for position, color in pixels.items():
-            image.put(color, to=position)
-        images.append(image)
-    return images, size
-

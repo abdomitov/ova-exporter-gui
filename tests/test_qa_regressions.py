@@ -28,28 +28,28 @@ class DestinationQATests(unittest.TestCase):
                      tool_locator=lambda *args:Path(__file__),update_checks=False)
         self.addCleanup(lambda:close_root(self.root))
         self.app.new_download()
-        self.wizard=self.app.wizard
-        self.addCleanup(self.wizard.destroy_wizard)
+        self.wizard=self.app.flow
         self.wizard.client=SimpleNamespace(authority='192.0.2.99',logout=Mock())
         vm=dict(id='qa-vm',name='QA fixture',power='poweredOff',cpu='2',ram='2048',capacity=1024**3,path='')
         self.wizard.machines=[vm]
         self.wizard.show_vms()
         self.wizard.tree.selection_set(vm['id'])
         self.wizard.selection_changed()
+        self.wizard.show_step(3)
         self.wizard.folder.set(str(Path(__file__).resolve().parent))
         self.wizard.filename.set('qa-fixture-never-written.ova')
 
     def test_blank_folder_is_not_silently_current_directory(self):
         self.wizard.folder.set('')
-        with patch('wizard.threading.Thread') as worker,patch('wizard.messagebox.showerror') as error:
+        with patch('export_flow.threading.Thread') as worker,patch('export_flow.messagebox.showerror') as error:
             self.wizard.export()
         worker.assert_not_called()
         error.assert_called_once()
         self.assertFalse(self.wizard.busy)
 
     def test_disconnected_destination_is_reported_without_starting_export(self):
-        with patch('wizard.shutil.disk_usage',side_effect=OSError('QA drive unavailable')), \
-                patch('wizard.threading.Thread') as worker,patch('wizard.messagebox.showerror') as error:
+        with patch('export_flow.shutil.disk_usage',side_effect=OSError('QA drive unavailable')), \
+                patch('export_flow.threading.Thread') as worker,patch('export_flow.messagebox.showerror') as error:
             self.wizard.export()
         worker.assert_not_called()
         error.assert_called_once()
@@ -76,7 +76,7 @@ class DestinationQATests(unittest.TestCase):
         def inline(target,**kwargs):
             return SimpleNamespace(start=target)
         self.wizard.client=None
-        with patch('wizard.VSphere',return_value=client),patch('wizard.threading.Thread',side_effect=inline):
+        with patch('export_flow.VSphere',return_value=client),patch('export_flow.threading.Thread',side_effect=inline):
             self.wizard.authenticate('192.0.2.99',certificate)
             self.wizard.poll()
             self.assertEqual(self.wizard.password.get(),'')
@@ -92,9 +92,11 @@ class DestinationQATests(unittest.TestCase):
                 self.wizard.export()
                 self.wizard.poll()
                 start.assert_called_once()
-        self.assertTrue(self.wizard.closed)
-        self.assertIsNone(self.app.wizard)
-        self.assertEqual(len(self.app.dashboard.cards),1)
+        # The browsing session stays open for another VM; the task has its own session.
+        self.assertIs(self.wizard.client,client)
+        self.assertEqual(self.wizard.step,2)
+        self.assertEqual(self.app.current,'queue')
+        self.assertEqual(len(self.app.queue.cards),1)
         self.app.settings.remember_profile.assert_not_called()
 
 

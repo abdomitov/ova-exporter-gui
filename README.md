@@ -20,13 +20,16 @@ macOS and Linux downloads are not available yet.
 
 ## Features
 
-- Compact export dashboard; select a task to see its full progress and speed history.
-- Light and dark themes, resizable windows, keyboard navigation and mouse-wheel scrolling.
-- Startup OVF Tool detection, red missing-tool alert, and a custom-location picker.
+- One window with three views: **Exports**, **New export** and **Settings**.
+- Task list with per-task progress; the selected task shows a stage track (preflight, transfer,
+  verify, server check), speed history and its in-memory tool log.
+- Light and dark themes, keyboard navigation and mouse-wheel scrolling.
+- Startup OVF Tool detection, a missing-tool alert, and a custom-location picker in Settings.
 - Background app update checks, Update / Remind me later / Skip this version choices,
   and verified installer downloads. Installation waits for exports to finish.
-- ESXi and vCenter connections with a fresh password for each new setup session.
-- Powered-off VM filter, search, destination selection and filename validation.
+- ESXi and vCenter connections; the password is typed for each connection and never stored.
+  The browsing session stays open until you disconnect, so several VMs can be queued in a row.
+- Powered-off VM filter, search, sortable columns, free-space display and filename validation.
 - Up to three concurrent exports across server addresses; one active export per address.
 - Approximate time remaining, output-file write rate, elapsed time and peak speed.
 - Manifest checksum verification before an `.incomplete` package becomes the final `.ova`.
@@ -36,24 +39,29 @@ This release supports exporting to a local OVA. It does not implement VM deploym
 
 ## Screenshots
 
-Captured from the **2.3.5 UI** using the guarded fake-data preview. VM names,
+Captured from the workbench UI using the guarded fake-data preview on Linux (fonts differ
+slightly from Windows, which uses Bahnschrift and Segoe UI). VM names,
 addresses and progress are illustrative; no real infrastructure or credentials
 appear in these images.
 
-![Dark dashboard showing OVA export progress and transfer speed history](docs/images/dashboard-dark.jpg)
+![Exports view with the task list, stage track and transfer speed history](docs/images/exports-light.png)
 
 <details>
-<summary>Light theme, compact layout, connection and VM selection</summary>
+<summary>Dark theme, the three New export steps, Settings and the missing-tool state</summary>
 
-![Missing OVF Tool status with custom-location and detection controls](docs/images/tool-missing.jpg)
+![Exports view in the dark theme](docs/images/exports-dark.png)
 
-![Light dashboard](docs/images/dashboard-light.jpg)
+![Step 1: sign-in form with a masked password and saved servers](docs/images/connect.png)
 
-![Compact dashboard at 640 by 420 pixels](docs/images/dashboard-compact.jpg)
+![Step 2: searchable, sortable VM list filtered to powered-off machines](docs/images/choose-vm.png)
 
-![Connection form with a masked-by-default password input](docs/images/new-export-dark.jpg)
+![Step 3: VM summary, save folder with free space, and OVA filename](docs/images/save-as.png)
 
-![Powered-off VM filter, selected example VM and OVA destination](docs/images/vm-selection-dark.jpg)
+![Settings: OVF Tool location, appearance, app updates and saved data](docs/images/settings.png)
+
+![Empty Exports view when OVF Tool has not been found](docs/images/tool-missing.png)
+
+![Exports view at the 960 by 600 minimum window size](docs/images/exports-minimum.png)
 
 </details>
 
@@ -147,19 +155,17 @@ py -3 launch.pyw
 
 ## Export a VM
 
-1. Click **New export** or press **Ctrl+N**.
-2. Enter an ESXi or vCenter address, username and password. Press **Enter** in the password field to connect. The eye toggles password visibility.
+1. Click **New export** in the left rail or press **Ctrl+N**.
+2. **Connect**: enter an ESXi or vCenter address, username and password, or click a saved server to fill the first two. Press **Enter** in the password field to connect. **Show** toggles password visibility.
 3. Verify the certificate fingerprint before accepting it. The app remembers that exact certificate; a changed fingerprint requires review again.
-4. Choose a powered-off VM, folder and `.ova` filename, then add the task. Existing destination files are preserved.
-5. Select its dashboard row for progress details. Add another export to work with another server.
+4. **Choose a VM**: search, sort by any column, select a powered-off VM and click **Continue** (or double-click the row).
+5. **Save as**: choose the folder and `.ova` filename, then **Add to queue**. Existing destination files are preserved.
+6. The app switches to **Exports** and selects the new task. You stay signed in, so you can return to **New export** for another VM from the same server; click **Disconnect** when finished.
 
-The connection and selection sections keep their `+`/`−` headers. **F5** refreshes inventory; **Escape** closes an idle setup window. Shift+wheel scrolls tables horizontally. Drag the dashboard divider to resize its detail pane.
-
-Use the top-right theme button to switch light/dark appearance. Short windows
-hide the large summary cards to keep more room for the task table; the counts
-and throughput remain available in the status line. Narrow windows prioritize
-the server, VM, progress, status and speed columns; wider windows also show dates
-and destination. Scroll the selected task's detail pane to see its full graph.
+Shortcuts: **Ctrl+1/2/3** switch views, **Ctrl+F** jumps to VM search, **F5** refreshes the VM list,
+**Up/Down** move through the task list. The selected task has **Transfer** and **Tool log** tabs,
+plus **Open folder** and **Copy path**. Change the theme from the rail or in **Settings**.
+The minimum window size is 960 × 600.
 
 Server aliases and a vCenter plus its ESXi host can refer to the same physical resources. The per-address queue cannot identify all such overlaps. Concurrent exports still share your PC's NIC, storage and any common network links.
 

@@ -24,17 +24,16 @@ def benchmark():
     for index in range(32):
         job = app.manager.add(DemoClient(f'192.0.2.{index+1}'), machine(index, f'Example {index}'),
                               Path(f'example-{index}.ova'))
-        app.dashboard.add(job)
+        app.queue.add(job)
         job.state = 'running'
-        app.dashboard.handle(job.id, 'running', None)
+        app.queue.handle(job.id, 'running', None)
         jobs.append(job)
-    app.dashboard.tree.selection_set(jobs[0].id)
-    app.dashboard.selection_changed()
+    app.queue.select(jobs[0].id)
     root.update_idletasks()
 
     def workload(hidden=False):
         if hidden:
-            app.dashboard.hide_details()
+            app.queue.set_active(False)
         for index in range(2000):
             job = jobs[index % len(jobs)]
             app.emit('job', (job.id, 'progress', (index // len(jobs)) % 100))
@@ -44,7 +43,7 @@ def benchmark():
         heartbeat = []
         root.after(10, lambda: heartbeat.append(time.perf_counter()-started))
         cpu = time.process_time()
-        with patch.object(app.dashboard.panel, 'draw', wraps=app.dashboard.panel.draw) as draws, \
+        with patch.object(app.queue.panel, 'draw', wraps=app.queue.panel.draw) as draws, \
                 patch.object(app, 'refresh_tool', wraps=app.refresh_tool) as tool_checks:
             app.poll()
             while not app.events.empty() or not heartbeat:
@@ -63,7 +62,7 @@ def benchmark():
             polls.append(1)
             original_poll()
         app.poll = count_poll
-        # Empty dashboard represents an idle app (no active worker or update).
+        # An empty queue represents an idle app (no active worker or update).
         app.manager.jobs.clear()
         done = tk.BooleanVar(root, False)
         cpu = time.process_time()

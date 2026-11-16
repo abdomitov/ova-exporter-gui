@@ -82,7 +82,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(sample['bytes'], 30_000_000)
 
     def test_remaining_time(self):
-        from transfer_ui import remaining_text
+        from transfer_panel import remaining_text
         self.assertEqual(remaining_text(60, 50, 1_000_000), 'About 1:00 remaining')
         self.assertEqual(remaining_text(60, 0, 1_000_000), 'Calculating time remaining…')
         self.assertEqual(remaining_text(60, 50, 0), 'Waiting for data…')

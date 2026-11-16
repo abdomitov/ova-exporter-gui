@@ -2,6 +2,11 @@
 
 Run from the project root: python tools/preview_ui.py
 All hosts below use documentation-only IP ranges. Never import real user data.
+
+Views:   --connect  --inventory  --no-results  --destination  --settings
+States:  --empty  --missing-tool  --error-state  --log  --exit-dialog
+         --update-available  --update-ready  --animate
+Look:    --dark  --light  --size 960x600
 """
 import math
 import socket
@@ -31,9 +36,9 @@ from secure_storage import WindowsDataProtection  # noqa: E402
 ConnectionSettings.__init__ = blocked
 WindowsDataProtection.protect = blocked
 WindowsDataProtection.unprotect = blocked
-import wizard  # noqa: E402 - apply the guards before loading application modules
-wizard.probe = blocked
-wizard.VSphere = blocked
+import export_flow  # noqa: E402 - apply the guards before loading application modules
+export_flow.probe = blocked
+export_flow.VSphere = blocked
 
 
 class MemorySettings:
@@ -43,7 +48,8 @@ class MemorySettings:
         return []
 
     def profiles(self):
-        return []
+        return [dict(address='192.0.2.10', username='root'),
+                dict(address='vcenter.example.test', username='administrator@vsphere.local')]
 
     def trusted_pin(self, address):
         return None
@@ -53,7 +59,7 @@ class MemorySettings:
 
 
 class DemoClient:
-    product = 'VMware ESXi · illustrative inventory'
+    product = 'VMware ESXi (illustrative inventory)'
     cookie = ''
 
     def __init__(self, address):
@@ -63,21 +69,38 @@ class DemoClient:
         pass
 
 
-def machine(index, name, power='poweredOff'):
-    return dict(id=f'demo-{index}', name=name, power=power, cpu='4', ram='8192',
-                capacity=80 * 1024**3, path='[Demo] example.vmx')
+def machine(index, name, power='poweredOff', cpu='4', ram='8192', disk=80):
+    return dict(id=f'demo-{index}', name=name, power=power, cpu=cpu, ram=ram,
+                capacity=disk * 1024**3, path=f'[Demo] {name}/{name}.vmx')
+
+
+INVENTORY = [
+    machine(20, 'Atlas Maps'), machine(21, 'Build Worker', cpu='8', ram='16384', disk=120),
+    machine(22, 'Analytics Archive', cpu='2', ram='4096', disk=400), machine(23, 'Lab Gateway', cpu='2', ram='2048', disk=20),
+    machine(24, 'Example Database', 'poweredOn', cpu='8', ram='32768', disk=250),
+]
 
 
 class PreviewApp(application.App):
     def __init__(self, root):
         super().__init__(root, settings=MemorySettings(), remember_theme=False,
-                         tool_store=False,tool_locator=lambda base,selected=None: Path(sys.executable),
+                         tool_store=False, tool_locator=lambda base, selected=None: Path(sys.executable),
                          update_checks=False)
         root.title('OVA Exporter GUI — FAKE DATA PREVIEW')
         self.manager.start = blocked
         self.manager.export = blocked
-        self.tool_download.configure(command=self.preview_notice)
-        self.tool_browse.configure(command=self.preview_notice)
+        self.settings_view.tool_download.configure(command=self.preview_notice)
+        self.settings_view.tool_browse.configure(command=self.preview_notice)
+        self.queue.folder_button.configure(command=self.preview_notice)
+        flow = self.flow
+        flow.folder.set('D:/Exports')
+        flow.connect = self.connect_fake
+        flow.connect_btn.configure(command=self.connect_fake)
+        flow.export = self.preview_notice
+        flow.export_btn.configure(command=self.preview_notice)
+        flow.browse = self.preview_notice
+        flow.browse_btn.configure(command=self.preview_notice)
+        flow.update_space = lambda: flow.space.set('412.6 GB free in this folder\'s drive.')
         self.jobs = []
         for index, (name, host, phase, percent) in enumerate([
             ('Atlas Maps', '192.0.2.10', 'running', 46),
@@ -87,168 +110,156 @@ class PreviewApp(application.App):
         ]):
             job = self.manager.add(DemoClient(host), machine(index, name), Path('D:/Exports') / (name.replace(' ', '-') + '.ova'))
             self.jobs.append(job)
-            self.dashboard.add(job)
+            self.queue.add(job)
             if phase != 'queued':
                 job.state = 'running'
-                self.dashboard.handle(job.id, 'running', None)
+                self.queue.handle(job.id, 'running', None)
                 for point in range(1, percent+1):
                     speed = (36 + 10*math.sin(point/4) + 4*math.cos(point/2)) * 1_000_000
-                    self.dashboard.handle(job.id, 'progress', point)
-                    self.dashboard.handle(job.id, 'sample', dict(speed=speed, bytes=int(point*240_000_000), elapsed=point*7))
+                    self.queue.handle(job.id, 'progress', point)
+                    self.queue.handle(job.id, 'sample', dict(speed=speed, bytes=int(point*240_000_000), elapsed=point*7))
                 if phase == 'done':
                     job.state = 'done'
-                    self.dashboard.handle(job.id, 'done', '3 manifest checksums verified. Example package saved.')
-            job.log_lines.append('Fake-data preview. No real export has been started.')
-        self.dashboard.tree.selection_set(self.jobs[0].id)
-        self.dashboard.selection_changed()
-        self.caption.set('FAKE DATA PREVIEW · Network and OVF Tool execution are blocked.')
-        root.after(500, self.self_check)
+                    self.queue.handle(job.id, 'done', '3 file checksums verified. Example package saved.')
+            job.log_lines.extend(['Fake-data preview. No real export has been started.',
+                                  f'VM: {name}', f'Source: {host}', 'Export preflight: illustrative only'])
+        self.queue.select(self.jobs[0].id)
+        self.caption.set('FAKE DATA PREVIEW. Network access and OVF Tool execution are blocked.')
+        if '--skip-check' in sys.argv:
+            root.geometry(self.size())
+            root.after(200, self.apply_flags)
+        else:
+            root.after(500, self.self_check)
+
+    def connect_fake(self):
+        self.flow.emit('connected', (DemoClient('192.0.2.10'), [dict(vm) for vm in INVENTORY]))
 
     def self_check(self):
-        """Exercise presentation only, including the narrow layout and both themes."""
-        self.root.update_idletasks()
-        assert len(self.dashboard.cards) == 4
-        assert self.dashboard.panel.canvas.find_withtag('progress_fill')
-        assert self.dashboard.panel.canvas.find_withtag('speed_history')
-        assert self.dashboard.metrics[0].get() == '3'
-        assert self.dashboard.metrics[1].get() == '1'
+        """Exercise presentation only: every view, both themes and the smallest window."""
+        root, queue, flow = self.root, self.queue, self.flow
+        root.update_idletasks()
+        assert len(queue.cards) == 4
+        assert queue.panel.canvas.find_withtag('progress_fill')
+        assert queue.panel.canvas.find_withtag('speed_history')
+        counts = queue.counts()
+        assert (counts['active'], counts['queued'], counts['done']) == (2, 1, 1)
+        assert '3' in self.nav['queue']['text']
         original = self.theme.mode
-        for mode in ('light', 'dark'):
-            self.theme.mode = mode
-            self.theme.apply()
-            assert self.dashboard.panel.colors == self.theme.colors
-        self.root.geometry('640x420')
-        self.root.update()
-        self.resize_layout()
-        self.root.update_idletasks()
-        assert self.root.winfo_width() == 640
-        assert self.root.winfo_height() == 420
-        assert self.dashboard.tree.winfo_width() > 300
-        assert not self.dashboard.metrics_row.winfo_manager()
+        for mode in ('dark', 'light'):
+            self.theme.set_mode(mode)
+            assert queue.panel.colors == self.theme.colors
+        root.geometry('960x600')
+        root.update()
+        assert queue.list.canvas.winfo_width() > 200
+        assert queue.panel.canvas.winfo_width() > 300
         assert self.footer.winfo_ismapped()
-        assert self.dashboard.summary_label.winfo_ismapped()
-        assert self.dashboard.tree.winfo_height() >= 70
-        assert not self.dashboard.tree.winfo_ismapped()
-        assert self.dashboard.detail_scroll.winfo_ismapped()
-        self.dashboard.hide_details()
-        self.root.update_idletasks()
-        assert self.dashboard.tree.winfo_ismapped()
-        self.dashboard.toggle_details()
-        self.root.update_idletasks()
-        assert self.dashboard.detail_scroll.winfo_ismapped()
-        assert tuple(self.dashboard.tree['displaycolumns']) == ('server','vm','progress','status','speed')
-        self.root.geometry('1120x780')
-        self.root.update()
-        self.resize_layout()
-        self.root.update_idletasks()
-        assert self.dashboard.metrics_row.winfo_manager() == 'pack'
+        queue.show_tab('log')
+        root.update_idletasks()
+        assert 'Fake-data preview' in queue.log_text.get('1.0', 'end')
+        queue.show_tab('transfer')
+        self.show('settings')
+        root.update_idletasks()
+        assert self.settings_view.winfo_ismapped() and not queue.winfo_ismapped()
+        assert str(self.settings_view.tool_browse['state']) == 'disabled'  # Unfinished fake tasks lock it.
         self.new_download()
-        form = self.wizard
-        form.root.geometry('600x420')
-        self.root.update_idletasks()
-        assert form.step == 1
-        assert form.password.get() == ''
-        assert form.login_entries[2]['show'] == '\u2022'
-        assert not form.remember_connection.get()
-        assert form.login_entries[2].bind('<Return>')
-        for mode in ('light', 'dark'):
-            self.theme.mode = mode
-            self.theme.apply()
-            self.root.update_idletasks()
-            assert form.password_icons
-        form.connect()
-        form.poll()
-        assert form.step == 2
-        assert len(form.tree.get_children()) == 4  # Running VM is filtered out.
-        form.destroy_wizard()
-        self.theme.mode = original
-        if '--light' in sys.argv:
-            self.theme.mode = 'light'
-        self.theme.apply()
-        print('PASS: fake dashboard + wizard; two themes; graph; statistics; narrow layouts; keyboard binding; powered-off filter', flush=True)
-        if '--check' in sys.argv:
+        root.update_idletasks()
+        assert self.current == 'new' and flow.step == 1
+        assert flow.password.get() == ''
+        assert flow.password_entry['show'] == '\u2022'
+        assert not flow.remember_connection.get()
+        assert flow.password_entry.bind('<Return>')
+        assert len(flow.saved_buttons) == 2
+        flow.connect()
+        self.poll()
+        assert flow.step == 2
+        assert len(flow.tree.get_children()) == 4  # Running VM is filtered out.
+        assert str(flow.continue_btn['state']) == 'disabled'
+        flow.tree.selection_set('demo-20')
+        flow.selection_changed()
+        flow.show_step(3)
+        assert flow.step == 3 and flow.filename.get() == 'Atlas Maps.ova'
+        flow.disconnect()
+        assert flow.step == 1 and not flow.active
+        self.show('queue')
+        root.geometry(self.size())
+        self.theme.set_mode(original)
+        print('PASS: fake queue, transfer panel and log; settings; new-export steps; two themes; minimum window', flush=True)
+        self.apply_flags()
+
+    @staticmethod
+    def size():
+        return sys.argv[sys.argv.index('--size') + 1] if '--size' in sys.argv else '1180x760'
+
+    def apply_flags(self):
+        flags, flow = set(sys.argv), self.flow
+        if '--dark' in flags or '--light' in flags:
+            self.theme.set_mode('dark' if '--dark' in flags else 'light')
+        if '--check' in flags:
             self.finish_close()
-        elif '--missing-tool' in sys.argv or '--empty' in sys.argv:
-            self.dashboard.tree.delete(*self.dashboard.tree.get_children())
-            self.dashboard.cards.clear()
-            self.dashboard.selected=None
-            self.dashboard.hide_details()
-            self.dashboard.cancel_selected.pack_forget()
-            self.dashboard.log_button.configure(state='disabled')
-            self.dashboard.details_button.configure(state='disabled')
-            self.dashboard.update_summary()
+            return
+        if '--missing-tool' in flags or '--empty' in flags:
+            self.queue.clear()
             self.manager.jobs.clear()
             self.manager.waiting.clear()
-            if '--missing-tool' in sys.argv:
-                self.tool_locator=lambda *args:None
+            if '--missing-tool' in flags:
+                self.tool_locator = lambda *args: None
             self.refresh_tool()
-            self.dashboard.show_empty()
-        elif '--compact' in sys.argv:
-            self.root.geometry('640x420')
-        elif '--error-state' in sys.argv:
-            job=self.jobs[0]
-            job.state='failed'
-            self.dashboard.handle(job.id,'failed',
-                'Illustrative failure: the server did not release the export lease. '
-                'Review the VM state with your administrator before retrying. '*5)
-        elif any(flag in sys.argv for flag in ('--wizard-connect','--wizard-selection','--wizard-no-results','--wizard-compact')):
+        elif '--error-state' in flags:
+            job = self.jobs[0]
+            job.state = 'failed'
+            self.queue.handle(job.id, 'failed',
+                'Illustrative failure: OVF Tool exited with code 1. The server did not release the export lease. '
+                'Review the VM state with your administrator before retrying. Partial files remain marked .incomplete.')
+        elif '--log' in flags:
+            self.queue.show_tab('log')
+        elif '--settings' in flags:
+            self.show('settings')
+        elif flags & {'--connect', '--inventory', '--no-results', '--destination'}:
             self.new_download()
-            self.wizard.root.geometry('600x420' if '--wizard-compact' in sys.argv else '740x700')
-            if '--wizard-selection' in sys.argv or '--wizard-no-results' in sys.argv:
-                self.wizard.connect()
-                if '--wizard-no-results' in sys.argv:
-                    self.wizard.root.after(500,lambda:self.wizard.search.set('Example not found'))
-        elif '--update-available' in sys.argv or '--update-ready' in sys.argv:
+            if '--connect' not in flags:
+                flow.connect()
+                self.poll()
+                if '--no-results' in flags:
+                    flow.search.set('Example not found')
+                else:
+                    flow.tree.selection_set('demo-20')
+                    flow.selection_changed()
+                    if '--destination' in flags:
+                        flow.show_step(3)
+        elif '--exit-dialog' in flags:
+            self.show_exit_choices()
+        elif '--update-available' in flags or '--update-ready' in flags:
             from updates import Release, REPOSITORY
-            self.updater.release=Release('9.0.0',f'https://github.com/{REPOSITORY}/releases/tag/v9.0.0',
-                                         '', '', 'fake-installer.exe', 10, '', True, 'Fake release')
-            self.updater.download=lambda *args:self.preview_notice()
-            self.updater.install=self.preview_notice
-            if '--update-ready' in sys.argv:
-                self.updater.ready=(Path('FAKE-NOT-AN-INSTALLER'), '0'*64)
+            self.updater.release = Release('9.0.0', f'https://github.com/{REPOSITORY}/releases/tag/v9.0.0',
+                                           '', '', 'fake-installer.exe', 10, '', True, 'Fake release')
+            self.updater.download = lambda *args: self.preview_notice()
+            self.updater.install = self.preview_notice
+            if '--update-ready' in flags:
+                self.updater.ready = (Path('FAKE-NOT-AN-INSTALLER'), '0'*64)
                 self.updater.show_ready()
             else:
                 self.updater.show_offer()
             self.updater.dialog.title('Update prompt — FAKE DATA PREVIEW')
-            self.updater.dialog.protocol('WM_DELETE_WINDOW',self.finish_close)
-            self.updater.dialog.bind('<Escape>',lambda event:self.finish_close())
-        if '--animate' in sys.argv and '--check' not in sys.argv:
+            self.updater.dialog.protocol('WM_DELETE_WINDOW', self.finish_close)
+            self.updater.dialog.bind('<Escape>', lambda event: self.finish_close())
+        if '--animate' in flags:
             self.animate()
 
     def animate(self):
         """Exercise real UI event handling with bounded synthetic progress."""
         for job in self.jobs:
-            view=self.dashboard.cards[job.id]
+            view = self.queue.cards[job.id]
             if view.state != 'running':
                 continue
-            percent=min(100,view.percent+0.15)
-            speed=(32+12*math.sin(percent/2))*1_000_000
-            self.emit('job',(job.id,'progress',percent))
-            self.emit('job',(job.id,'sample',dict(speed=speed,bytes=int(percent*240_000_000),
-                                                elapsed=view.elapsed+0.125)))
-            if percent>=100:
-                job.state='done'
-                self.emit('job',(job.id,'done','Illustrative package completed. No file was created.'))
-        self.root.after(125,self.animate)
-
-    def new_download(self):
-        super().new_download()
-        wizard = self.wizard
-        if not wizard:
-            return
-        wizard.root.title('New export — FAKE DATA PREVIEW')
-        wizard.folder.set('D:/Exports')
-        def connect_fake():
-            wizard.emit('connected', (DemoClient('192.0.2.10'), [
-                machine(20, 'Atlas Maps'), machine(21, 'Build Worker'),
-                machine(22, 'Analytics Archive'), machine(23, 'Lab Gateway'),
-                machine(24, 'Example Database', 'poweredOn'),
-            ]))
-        wizard.connect = connect_fake
-        wizard.connect_btn.configure(command=connect_fake)
-        wizard.export = self.preview_notice
-        wizard.export_btn.configure(command=self.preview_notice)
-        wizard.browse = self.preview_notice
+            percent = min(100, view.percent+0.15)
+            speed = (32+12*math.sin(percent/2))*1_000_000
+            self.emit('job', (job.id, 'progress', percent))
+            self.emit('job', (job.id, 'sample', dict(speed=speed, bytes=int(percent*240_000_000),
+                                                    elapsed=view.elapsed+0.125)))
+            if percent >= 100:
+                job.state = 'done'
+                self.emit('job', (job.id, 'done', 'Illustrative package completed. No file was created.'))
+        self.root.after(125, self.animate)
 
     def preview_notice(self, *args, **kwargs):
         messagebox.showinfo('Fake-data preview', 'This preview cannot start exports or save data.', parent=self.root)
