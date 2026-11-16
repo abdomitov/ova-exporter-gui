@@ -70,7 +70,8 @@ class ScrollBody(ttk.Frame):
         self.rowconfigure(0, weight=1)
         self.canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0, width=1, height=1)
         self.canvas.grid(row=0, column=0, sticky='nsew')
-        self.scroll = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
+        self.scroll = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview,
+                                    style=('Surface.' if tone == 'Surface.' else '') + 'Vertical.TScrollbar')
         self.scroll.grid(row=0, column=1, sticky='ns')
         self.inner = ttk.Frame(self.canvas, padding=padding, style=tone + 'TFrame')
         self.window = self.canvas.create_window(0, 0, anchor='nw', window=self.inner)

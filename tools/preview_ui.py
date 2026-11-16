@@ -4,9 +4,9 @@ Run from the project root: python tools/preview_ui.py
 All hosts below use documentation-only IP ranges. Never import real user data.
 
 Views:   --connect  --inventory  --no-results  --destination  --settings
-States:  --empty  --missing-tool  --error-state  --log  --exit-dialog
+States:  --empty  --missing-tool  --error-state  --completed  --queued  --verifying  --log  --exit-dialog
          --update-available  --update-ready  --animate
-Look:    --dark  --light  --size 960x600
+Look:    --dark  --light  --size 1080x660
 """
 import math
 import socket
@@ -148,7 +148,7 @@ class PreviewApp(application.App):
         for mode in ('dark', 'light'):
             self.theme.set_mode(mode)
             assert queue.panel.colors == self.theme.colors
-        root.geometry('960x600')
+        root.geometry('1080x660')
         root.update()
         assert queue.list.canvas.winfo_width() > 200
         assert queue.panel.canvas.winfo_width() > 300
@@ -188,7 +188,7 @@ class PreviewApp(application.App):
 
     @staticmethod
     def size():
-        return sys.argv[sys.argv.index('--size') + 1] if '--size' in sys.argv else '1180x760'
+        return sys.argv[sys.argv.index('--size') + 1] if '--size' in sys.argv else '1200x780'
 
     def apply_flags(self):
         flags, flow = set(sys.argv), self.flow
@@ -210,7 +210,24 @@ class PreviewApp(application.App):
             self.queue.handle(job.id, 'failed',
                 'Illustrative failure: OVF Tool exited with code 1. The server did not release the export lease. '
                 'Review the VM state with your administrator before retrying. Partial files remain marked .incomplete.')
+        elif '--completed' in flags:
+            self.queue.select(self.jobs[2].id)
+        elif '--queued' in flags:
+            self.queue.select(self.jobs[3].id)
+        elif '--verifying' in flags:
+            job = self.jobs[0]
+            for point in range(47, 101):
+                self.queue.handle(job.id, 'progress', point, defer=True)
+                self.queue.handle(job.id, 'sample', dict(speed=(34 + 8*math.sin(point/5)) * 1_000_000,
+                                                         bytes=int(point*240_000_000), elapsed=point*7), defer=True)
+            job.state = 'verifying'
+            self.queue.handle(job.id, 'verifying', None, defer=True)
+            self.queue.handle(job.id, 'status', 'Verified 2 of 3 files…')
         elif '--log' in flags:
+            job = self.jobs[0]
+            job.log_lines.extend(['OVF Tool PID: 4242 (illustrative)', 'Opening VI source: vi://[credentials]@192.0.2.10/',
+                                  'Opening OVA target: D:\\Exports\\Atlas-Maps.incomplete.ova', 'Writing OVA package',
+                                  'Transfer in progress; percentages are shown on the Transfer tab'])
             self.queue.show_tab('log')
         elif '--settings' in flags:
             self.show('settings')

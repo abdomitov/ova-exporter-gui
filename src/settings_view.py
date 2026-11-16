@@ -19,7 +19,7 @@ class SettingsView(ttk.Frame):
         px = theme.px
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
-        ttk.Label(self, text='Settings', style='Title.TLabel').grid(row=0, column=0, sticky='w', pady=(0, px(16)))
+        ttk.Label(self, text='Settings', style='Title.TLabel').grid(row=0, column=0, sticky='w', pady=(0, px(10)), padx=theme.card_margin[0])
         body = ScrollBody(self, padding=0)
         body.grid(row=1, column=0, sticky='nsew')
         self.body = body
@@ -29,8 +29,8 @@ class SettingsView(ttk.Frame):
 
         def section(title):
             card = theme.panel(inner)
-            card.grid(column=0, sticky='ew', pady=(0, px(14)), padx=(0, px(4)))
-            frame = ttk.Frame(card, style='Surface.TFrame', padding=(px(24), px(18)))
+            card.grid(column=0, sticky='ew')
+            frame = ttk.Frame(card, style='Surface.TFrame', padding=(px(22), px(16)))
             frame.pack(fill='x')
             ttk.Label(frame, text=title, style='Heading.Surface.TLabel').pack(anchor='w')
             return frame
@@ -48,11 +48,11 @@ class SettingsView(ttk.Frame):
         note(tool, style='Mono.Surface.TLabel', textvariable=self.tool_location)
         row = ttk.Frame(tool, style='Surface.TFrame')
         row.pack(anchor='w', pady=(px(12), 0))
-        self.tool_browse = ttk.Button(row, text='Locate ovftool.exe…', command=owner.choose_tool)
+        self.tool_browse = ttk.Button(row, text='Locate ovftool.exe…', command=owner.choose_tool, style='Surface.TButton')
         self.tool_browse.pack(side='left')
-        self.tool_auto = ttk.Button(row, text='Auto-detect', command=owner.auto_tool)
+        self.tool_auto = ttk.Button(row, text='Auto-detect', command=owner.auto_tool, style='Surface.TButton')
         self.tool_auto.pack(side='left', padx=8)
-        self.tool_download = ttk.Button(row, text='Download from Broadcom', command=lambda: webbrowser.open(TOOL_DOWNLOAD))
+        self.tool_download = ttk.Button(row, text='Download from Broadcom', command=lambda: webbrowser.open(TOOL_DOWNLOAD), style='Surface.TButton')
         self.tool_download.pack(side='left')
         self.tool_busy = note(tool, style='Small.Surface.TLabel',
                               text='This app runs your own installed copy; it does not include or update OVF Tool.')
@@ -74,9 +74,9 @@ class SettingsView(ttk.Frame):
         row = ttk.Frame(updates, style='Surface.TFrame')
         row.pack(anchor='w', pady=(px(12), 0))
         updater = owner.updater
-        self.check_button = ttk.Button(row, text='Check for updates', command=lambda: updater.check(manual=True))
+        self.check_button = ttk.Button(row, text='Check for updates', command=lambda: updater.check(manual=True), style='Surface.TButton')
         self.check_button.pack(side='left')
-        self.install_button = ttk.Button(row, text='Install downloaded update…', command=updater.install)
+        self.install_button = ttk.Button(row, text='Install downloaded update…', command=updater.install, style='Surface.TButton')
         self.install_button.pack(side='left', padx=8)
         self.automatic_check = ttk.Checkbutton(updates, text='Check automatically at startup', variable=updater.automatic,
                                                command=updater.toggle_automatic, style='Surface.Ova.TCheckbutton')
@@ -87,14 +87,14 @@ class SettingsView(ttk.Frame):
         saved = section('Saved connection data')
         note(saved, text='Remembered addresses, usernames and approved certificates are encrypted for your Windows '
                          'account on this PC. Passwords and session tickets are never saved.')
-        self.clear_button = ttk.Button(saved, text='Clear saved data…', command=owner.flow.clear_saved_data)
+        self.clear_button = ttk.Button(saved, text='Clear saved data…', command=owner.flow.clear_saved_data, style='Surface.TButton')
         self.clear_button.pack(anchor='w', pady=(px(12), 0))
 
         about = section('About')
         note(about, text=f'{APP_NAME} {VERSION}. An independent graphical front end for VMware OVF Tool; '
                          'not affiliated with Broadcom or VMware.')
-        ttk.Button(about, text='Project page on GitHub', command=lambda: webbrowser.open(PROJECT_URL)
-                   ).pack(anchor='w', pady=(px(12), 0))
+        ttk.Button(about, text='Project page on GitHub', command=lambda: webbrowser.open(PROJECT_URL),
+                   style='Surface.TButton').pack(anchor='w', pady=(px(12), 0))
 
         body.canvas.bind('<Configure>', self.wrap, add='+')
         theme.register(self)
@@ -108,7 +108,7 @@ class SettingsView(ttk.Frame):
 
     def apply_theme(self, colors):
         for mode, button in self.mode_buttons.items():
-            button.configure(style='TabActive.TButton' if mode == self.owner.theme.mode else 'Tab.TButton')
+            button.configure(style='Surface.TabActive.TButton' if mode == self.owner.theme.mode else 'Surface.Tab.TButton')
 
     def refresh_tool(self, ready, path, busy):
         self.tool_label.configure(style='Success.Surface.TLabel' if ready else 'Error.Surface.TLabel')

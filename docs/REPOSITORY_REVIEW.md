@@ -35,11 +35,11 @@ Captured with the Windows computer-use tool from `tools/preview_ui.py`:
 | --- | --- |
 | `images/exports-light.png` | Default |
 | `images/exports-dark.png` | `--dark` |
-| `images/exports-minimum.png` | `--size 960x600` |
+| `images/exports-minimum.png` | `--size 1080x660` |
 | `images/connect.png` | `--connect` |
 | `images/choose-vm.png` | `--inventory` |
 | `images/save-as.png` | `--destination` |
-| `images/settings.png` | `--settings --dark` |
+| `images/settings.png` | `--settings` |
 | `images/tool-missing.png` | `--missing-tool` |
 
 The workbench UI images above were captured on Linux under Xvfb with

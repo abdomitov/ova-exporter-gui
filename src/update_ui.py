@@ -127,7 +127,7 @@ class UpdateUI:
         window.transient(self.root)
         window.minsize(460, 1)
         window.resizable(True, False)
-        frame = ttk.Frame(window, padding=20)
+        frame = ttk.Frame(window, padding=28)
         frame.pack(fill='both', expand=True)
         # Non-modal: an update notification never steals a credential dialog's grab.
         window.bind('<Escape>', lambda event: window.destroy())
@@ -145,7 +145,7 @@ class UpdateUI:
     def show_offer(self):
         release = self.release
         window, frame = self.window('OVA Exporter GUI update available')
-        ttk.Label(frame, text=f'Version {release.version} is available', style='Heading.TLabel').pack(anchor='w')
+        ttk.Label(frame, text=f'Version {release.version} is available', style='Title.TLabel').pack(anchor='w')
         ttk.Label(frame, text=f'Installed: {VERSION}' + (' · New release: Windows preview' if release.preview else ''),
                   style='Muted.TLabel').pack(anchor='w', pady=(6, 10))
         ttk.Label(frame, text=('Update downloads and verifies the installer, applies the upgrade '
@@ -204,7 +204,7 @@ class UpdateUI:
         busy = self.blocked()
         self.app.caption.set('App update downloaded and verified. Install it from Settings when exports finish.')
         window, frame = self.window('App update ready')
-        ttk.Label(frame, text=f'Version {self.release.version} is ready', style='Heading.TLabel').pack(anchor='w')
+        ttk.Label(frame, text=f'Version {self.release.version} is ready', style='Title.TLabel').pack(anchor='w')
         ttk.Label(frame, text=('Finish all export tasks and disconnect from the server in New export before installing. '
                   'Then choose Install downloaded update in Settings.' if busy else
                   ('Install now updates the app with a progress window and reopens it. '

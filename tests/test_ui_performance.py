@@ -103,7 +103,7 @@ class ResponsiveUITests(unittest.TestCase):
         self.assertEqual(app.queue.panel.colors,app.theme.colors)
         self.assertEqual(app.queue.list.colors,app.theme.colors)
         self.assertEqual(app.queue.list.canvas['background'],app.theme.colors['surface'])
-        self.assertEqual(app.settings_view.mode_buttons[other]['style'],'TabActive.TButton')
+        self.assertEqual(app.settings_view.mode_buttons[other]['style'],'Surface.TabActive.TButton')
         self.assertIn(original.capitalize(),app.theme_button['text'])
         app.theme_button.invoke()
         self.assertEqual(app.theme.mode,original)
@@ -218,7 +218,7 @@ class ResponsiveUITests(unittest.TestCase):
 
     def test_minimum_window_keeps_connect_button_and_transfer_track_visible(self):
         self.root.deiconify()
-        self.root.geometry('960x600')
+        self.root.geometry('1080x660')
         self.root.update()
         self.settle(120)
         panel=self.app.queue.panel
@@ -245,7 +245,7 @@ class ResponsiveUITests(unittest.TestCase):
         self.assertEqual(self.app.queue.cards[self.job.id].state,'done')
         self.assertEqual(self.app.queue.panel.value,100)
         self.assertEqual(self.app.queue.counts()['done'],1)
-        self.assertEqual(self.app.nav['queue']['text'],'Exports')
+        self.assertEqual(self.app.nav['queue']['text'].strip(),'Exports')
 
     def test_hidden_transfer_panel_does_no_drawing_and_catches_up_when_shown(self):
         queue=self.app.queue

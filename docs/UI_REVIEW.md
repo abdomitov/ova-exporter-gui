@@ -9,7 +9,7 @@ export and Settings views. The export core (`jobs.py`, `exporter.py`,
 - The tool log is a tab on the selected task instead of a separate window.
 - OVF Tool, appearance and update controls moved to Settings.
 - New: sortable VM columns, saved-server shortcuts, free-space display,
-  Open folder and Copy path. The minimum window is 960 x 600 (was 640 x 420).
+  Open folder and Copy path. The minimum window is 1080 x 660 (was 640 x 420).
 - The default theme is light; a saved preference is still honoured.
 
 The rewrite was checked with the offline suite and the fake-data preview on

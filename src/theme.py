@@ -1,53 +1,58 @@
-"""Light/dark tokens, typefaces and ttk styling for the workbench UI.
+"""Light/dark tokens, typefaces, drawn surfaces and ttk styling for the workbench UI.
 
 Export logic does not depend on this module. Only the appearance preference is
 stored here; connection hints and certificate pins use the separate DPAPI store.
 
-Surfaces are named by where a widget sits: the page (`bg`), a bordered panel
-(`surface`) or the navigation rail (`rail`). A ttk style prefix selects the
-matching background, e.g. ``Muted.Surface.TLabel``.
+Rounded cards, buttons and fields are ttk image elements built from the RGBA
+artwork in `ui_assets`. A style prefix says which surface a widget sits on, so
+the pixels behind its rounded corners match: none for the page, `Surface.` for
+a card, `Rail.` for the navigation rail (e.g. ``Surface.Accent.TButton``,
+``Muted.Surface.TLabel``).
 """
 import json
+import math
 import tkinter as tk
 import weakref
 from tkinter import font as tkfont
 from tkinter import ttk
 
-from ui_assets import configure_checkboxes
+from ui_assets import Assets, check_png, empty_png, icon_png, rounded_png, stage_png
 
 PALETTES = {
     'light': {
-        'bg': '#eceff3', 'surface': '#ffffff', 'field': '#ffffff', 'sunken': '#f4f6f9',
-        'text': '#17202b', 'muted': '#5b6878', 'border': '#d3dae2',
-        'accent': '#2456e6', 'accent_hover': '#1c46c2', 'accent_text': '#ffffff',
-        'selection': '#dfe8ff', 'positive': '#197a50', 'negative': '#b92d47',
-        'warning': '#8f5a00', 'disabled': '#9aa5b3',
-        'track': '#e2e7ee', 'graph': '#c9d8ff', 'graph_line': '#2456e6', 'grid': '#e6eaf0',
-        'positive_fill': '#dcf3e7', 'negative_fill': '#fbe1e6', 'warning_fill': '#fdf0cf',
-        'rail': '#1c2633', 'rail_text': '#e7ecf2', 'rail_muted': '#93a1b3',
-        'rail_active': '#2d3b4e', 'rail_border': '#2d3b4e',
-        'rail_positive': '#74d8ab', 'rail_negative': '#ff9aa9',
+        'bg': '#f1f3f8', 'surface': '#ffffff', 'field': '#ffffff', 'sunken': '#f5f7fb',
+        'text': '#141b2b', 'muted': '#5d6880', 'border': '#dde2ec',
+        'accent': '#3257f5', 'accent_hover': '#2444d6', 'accent_text': '#ffffff',
+        'selection': '#e7edff', 'positive': '#12855a', 'negative': '#c22f4b',
+        'warning': '#95600a', 'disabled': '#a2abbd',
+        'track': '#e6eaf2', 'graph': '#d5dfff', 'graph_line': '#3257f5', 'grid': '#e8ecf4',
+        'positive_fill': '#def5ea', 'negative_fill': '#fde4e9', 'warning_fill': '#fdf1d3',
+        'rail': '#141b2e', 'rail_text': '#f0f3fa', 'rail_muted': '#97a2ba',
+        'rail_active': '#263150', 'rail_border': '#2b3654',
+        'rail_positive': '#6fe0b0', 'rail_negative': '#ff9eae',
+        'shadow': '#1d2a55', 'shadow_strength': 0.10,
     },
     'dark': {
-        'bg': '#141a21', 'surface': '#1c242e', 'field': '#232d39', 'sunken': '#18202a',
-        'text': '#e8edf3', 'muted': '#98a5b5', 'border': '#313c4a',
-        'accent': '#6f95ff', 'accent_hover': '#8aa9ff', 'accent_text': '#0d1524',
-        'selection': '#273a66', 'positive': '#62d3a0', 'negative': '#ff8fa0',
-        'warning': '#f0bb62', 'disabled': '#5f6d7e',
-        'track': '#2a3441', 'graph': '#2b417a', 'graph_line': '#8aa9ff', 'grid': '#27313d',
-        'positive_fill': '#1d3d33', 'negative_fill': '#4a2530', 'warning_fill': '#463a20',
-        'rail': '#0e1319', 'rail_text': '#e7ecf2', 'rail_muted': '#8c9aac',
-        'rail_active': '#1f2a37', 'rail_border': '#222c38',
-        'rail_positive': '#62d3a0', 'rail_negative': '#ff8fa0',
+        'bg': '#0f131c', 'surface': '#181e2a', 'field': '#1f2634', 'sunken': '#141a25',
+        'text': '#e9edf6', 'muted': '#97a2b8', 'border': '#2a3345',
+        'accent': '#7193ff', 'accent_hover': '#8ea9ff', 'accent_text': '#0b1226',
+        'selection': '#24315a', 'positive': '#5fd6a3', 'negative': '#ff8fa3',
+        'warning': '#f2bd66', 'disabled': '#586377',
+        'track': '#262e3e', 'graph': '#26387a', 'graph_line': '#8ea9ff', 'grid': '#222a39',
+        'positive_fill': '#173a30', 'negative_fill': '#46222e', 'warning_fill': '#40361d',
+        'rail': '#0a0d14', 'rail_text': '#f0f3fa', 'rail_muted': '#8e99b0',
+        'rail_active': '#1b2337', 'rail_border': '#222a3c',
+        'rail_positive': '#5fd6a3', 'rail_negative': '#ff8fa3',
+        'shadow': '#000000', 'shadow_strength': 0.32,
     },
 }
 
-# First installed family wins. Bahnschrift (a DIN face shipped with Windows 10+)
-# gives headings and numerals an engineering-signage character; the rest are
-# fallbacks for older Windows and for running the preview on other systems.
+# First installed family wins; later names cover older Windows and other systems.
+# Bahnschrift, a DIN face shipped with Windows 10 and later, sets the numerals.
 FONT_CHOICES = {
-    'display': ('Bahnschrift', 'Segoe UI Variable Display', 'Segoe UI', 'Inter Display', 'Inter', 'DejaVu Sans'),
-    'body': ('Segoe UI', 'Inter', 'DejaVu Sans'),
+    'display': ('Segoe UI Variable Display', 'Segoe UI', 'Inter Display', 'Inter', 'DejaVu Sans'),
+    'numeric': ('Bahnschrift', 'Segoe UI Variable Display', 'Segoe UI', 'Inter Display', 'Inter', 'DejaVu Sans'),
+    'body': ('Segoe UI Variable Text', 'Segoe UI', 'Inter', 'DejaVu Sans'),
     'mono': ('Cascadia Mono', 'Consolas', 'DejaVu Sans Mono', 'Courier New'),
 }
 
@@ -58,9 +63,10 @@ class ThemeManager:
         self.path = preference_path
         self.mode = mode or self.read_preference()
         self.widgets = weakref.WeakSet()
-        self.panels = weakref.WeakKeyDictionary()
         self.style = ttk.Style(root)
         self.style.theme_use('clam')
+        self.assets = Assets(root)
+        self.elements = set()
         try:
             installed = {name.casefold(): name for name in tkfont.families(root)}
         except tk.TclError:
@@ -68,11 +74,14 @@ class ThemeManager:
         self.families = {role: next((installed[name.casefold()] for name in names if name.casefold() in installed),
                                     'TkDefaultFont' if role != 'mono' else 'TkFixedFont')
                          for role, names in FONT_CHOICES.items()}
-        # Canvas geometry is in pixels while fonts are in points; scale both alike.
+        # Canvas and artwork geometry is in pixels while fonts are in points; scale both alike.
         try:
             self.scale = max(1.0, float(root.tk.call('tk', 'scaling')) * 72 / 96)
         except (tk.TclError, ValueError):
             self.scale = 1.0
+        px = self.px
+        self.card_margin = (px(8), px(5), px(8), px(13))
+        self.card_padding = tuple(value + px(5) for value in self.card_margin)
         root._ova_theme = self
         self.apply()
 
@@ -101,17 +110,11 @@ class ThemeManager:
         widget.apply_theme(self.colors)
         self.refresh_windows()
 
-    def panel(self, parent, tone='surface', border=True, **options):
-        """A flat tk.Frame whose colors follow the theme; ttk cannot draw a hairline frame."""
-        frame = tk.Frame(parent, highlightthickness=1 if border else 0, borderwidth=0, **options)
-        self.panels[frame] = tone
-        self.paint_panel(frame, tone)
-        return frame
-
-    def paint_panel(self, frame, tone):
-        c = self.colors
-        line = c['rail_border'] if tone == 'rail' else c['border']
-        frame.configure(background=c[tone], highlightbackground=line, highlightcolor=line)
+    def panel(self, parent, tone='surface', **options):
+        """A rounded, softly shadowed card; its children use the `Surface.` styles."""
+        if tone == 'rail':
+            return ttk.Frame(parent, style='Rail.TFrame', **options)
+        return ttk.Frame(parent, style='Card.TFrame', padding=self.card_padding, **options)
 
     def toggle(self):
         self.set_mode('light' if self.mode == 'dark' else 'dark')
@@ -128,106 +131,191 @@ class ThemeManager:
             except OSError:
                 pass  # A read-only profile must not prevent changing appearance.
 
+    # -- drawn elements ----------------------------------------------------
+    def nine(self, name, radius, margin=(0, 0, 0, 0), stretch=24, **options):
+        """Create or recolor a stretchable rounded image; return it with its slice border."""
+        width = options.get('border_width', 1)
+        edge = math.ceil(radius + max(margin) + width + 1)
+        # ttk tiles the middle slice when it stretches an element, so a wide
+        # middle means a large card is painted in a few copies, not thousands.
+        size = 2 * edge + self.px(stretch)
+        return self.assets.set(name, rounded_png(size, size, radius, margin=margin, **options)), edge
+
+    def element(self, name, images, **options):
+        """Register a ttk image element once; later calls only recolor its images."""
+        if name in self.elements:
+            return
+        self.elements.add(name)
+        default, edge = images['normal']
+        states = [(state, images[state][0]) for state in ('disabled', 'pressed', 'active', 'focus') if state in images]
+        self.style.element_create(name, 'image', default, *states, border=edge, padding=0, sticky='nswe',
+                                  width=1, height=1, **options)
+
+    def button_art(self, key, radius, backdrop, normal, hover=None, focus=None, disabled=None):
+        def image(suffix, options):
+            return self.nine(key + suffix, radius, backdrop=backdrop, **options)
+        images = {'normal': image('', normal)}
+        if hover:
+            images['active'] = images['pressed'] = image('_hover', hover)
+        if disabled:
+            images['disabled'] = image('_disabled', disabled)
+        images['focus'] = image('_focus', focus or normal)
+        self.element('Ova.' + key, images)
+        return 'Ova.' + key
+
+    def build_art(self):
+        """Draw every element for the current palette; returns button kind -> element name."""
+        c, px = self.colors, self.px
+        r = px(8)
+        ring = dict(border=c['accent'], border_width=px(2))
+        art = {}
+        # Buttons and fields are drawn once per surface they can sit on.
+        for prefix, key, behind in (('', 'page', c['bg']), ('Surface.', 'card', c['surface'])):
+            def make(kind, name, *states, **more):
+                art[prefix + kind] = self.button_art(f'{name}_{key}', r, behind, *states, **more)
+            make('Accent.', 'accent', dict(fill=c['accent']), dict(fill=c['accent_hover']),
+                 dict(fill=c['accent'], border=c['text'], border_width=px(2)), dict(fill=c['track']))
+            make('', 'plain', dict(fill=c['surface'], border=c['border']), dict(fill=c['sunken'], border=c['disabled']),
+                 dict(fill=c['surface'], **ring), dict(fill=c['sunken'], border=c['border']))
+            make('Danger.', 'danger', dict(fill=c['surface'], border=c['border']),
+                 dict(fill=c['negative_fill'], border=c['negative']),
+                 dict(fill=c['surface'], border=c['negative'], border_width=px(2)))
+            make('Quiet.', 'quiet', dict(), dict(fill=c['track']), dict(**ring))
+            make('Step.', 'flat', dict())
+            art[prefix + 'Tab.'] = art[prefix + 'Quiet.']
+            art[prefix + 'StepDone.'] = art[prefix + 'StepActive.'] = art[prefix + 'Step.']
+            make('TabActive.', 'tab_active', dict(fill=c['selection']), None, dict(fill=c['selection'], **ring))
+            make('Row.', 'row', dict(), dict(fill=c['selection']), dict(**ring))
+            self.element('Ova.field_' + key, {
+                'normal': self.nine('field_' + key, r, fill=c['field'], border=c['border'], backdrop=behind),
+                'disabled': self.nine('field_disabled_' + key, r, fill=c['sunken'], border=c['border'], backdrop=behind),
+                'focus': self.nine('field_focus_' + key, r, fill=c['field'], backdrop=behind, **ring)})
+            for name in ('warning', 'negative', 'positive'):
+                self.element(f'Ova.banner_{name}_{key}', {'normal': self.nine(
+                    f'banner_{name}_{key}', px(10), fill=c[name + '_fill'], backdrop=behind)})
+            check = px(18)
+            images = [self.assets.set(f'check_{key}_{int(on)}{int(off)}', check_png(check, on, c, behind, off))
+                      for on, off in ((False, False), (True, False), (False, True), (True, True))]
+            if 'Ova.check_' + key not in self.elements:
+                self.elements.add('Ova.check_' + key)
+                self.style.element_create('Ova.check_' + key, 'image', images[0], ('disabled', 'selected', images[3]),
+                                          ('disabled', images[2]), ('selected', images[1]),
+                                          width=check + px(9), sticky='w')
+            for state in ('done', 'active', 'todo', 'warning', 'problem'):
+                self.assets.set(f'stage_{state}_{key}', stage_png(state, px(16), c, behind))
+        rail_ring = dict(border=c['rail_muted'], border_width=px(2))
+        art['Nav.'] = self.button_art('nav', r, c['rail'], dict(), dict(fill=c['rail_active']), rail_ring)
+        art['NavActive.'] = self.button_art('nav_active', r, c['rail'], dict(fill=c['rail_active']), None,
+                                            dict(fill=c['rail_active'], **rail_ring))
+        art['Rail.'] = self.button_art('rail_button', r, c['rail'], dict(border=c['rail_border']),
+                                       dict(fill=c['rail_active'], border=c['rail_border']), rail_ring)
+        self.element('Ova.card', {'normal': self.nine(
+            'card', px(14), self.card_margin, stretch=160, fill=c['surface'], border=c['border'], backdrop=c['bg'],
+            shadow=(c['shadow'], c['shadow_strength'], px(13), px(4)))})
+        self.element('Ova.rail_card', {'normal': self.nine('rail_card', px(10), fill=c['rail_active'], backdrop=c['rail'])})
+        # Free-standing artwork used by canvases and labels.
+        size = px(20)
+        for name in ('exports', 'new', 'settings'):
+            self.assets.set('nav_' + name, icon_png(name, size, c['rail_muted'], c['rail']))
+            self.assets.set('nav_' + name + '_hover', icon_png(name, size, c['rail_text'], c['rail_active']))
+        self.assets.set('empty', empty_png(px(84), c))
+        for tone in ('positive', 'negative'):
+            self.assets.set('dot_' + tone, rounded_png(px(9), px(9), px(5), fill=c['rail_' + tone], backdrop=c['rail_active']))
+        return art
+
     def apply(self):
-        c, s, f = self.colors, self.style, self.font
+        c, s, f, px = self.colors, self.style, self.font, self.px
+        art = self.build_art()
         s.configure('.', font=f('body', 10), background=c['bg'], foreground=c['text'],
                     bordercolor=c['border'], lightcolor=c['border'], darkcolor=c['border'],
                     troughcolor=c['bg'], focuscolor=c['accent'])
-        tones = {'': c['bg'], 'Surface.': c['surface'], 'Sunken.': c['sunken'], 'Rail.': c['rail']}
+        tones = {'': c['bg'], 'Surface.': c['surface'], 'Sunken.': c['sunken'], 'Rail.': c['rail'],
+                 'RailCard.': c['rail_active']}
         for prefix, background in tones.items():
-            rail = prefix == 'Rail.'
+            rail = prefix.startswith('Rail')
             text, muted = (c['rail_text'], c['rail_muted']) if rail else (c['text'], c['muted'])
             s.configure(prefix + 'TFrame', background=background)
             s.configure(prefix + 'TLabel', background=background, foreground=text)
             s.configure('Muted.' + prefix + 'TLabel', foreground=muted)
             s.configure('Small.' + prefix + 'TLabel', foreground=muted, font=f('body', 9))
-            s.configure('Heading.' + prefix + 'TLabel', font=f('body', 11, 'bold'))
-            s.configure('Title.' + prefix + 'TLabel', font=f('display', 20, 'bold'))
-            s.configure('Number.' + prefix + 'TLabel', font=f('display', 15, 'bold'))
-            s.configure('Mono.' + prefix + 'TLabel', font=f('mono', 9))
+            s.configure('Heading.' + prefix + 'TLabel', font=f('display', 12, 'bold'))
+            s.configure('Title.' + prefix + 'TLabel', font=f('display', 21, 'bold'))
+            s.configure('Mono.' + prefix + 'TLabel', font=f('mono', 9), foreground=muted)
             s.configure('Warning.' + prefix + 'TLabel', foreground=c['warning'])
             s.configure('Error.' + prefix + 'TLabel', foreground=c['rail_negative' if rail else 'negative'])
             s.configure('Success.' + prefix + 'TLabel', foreground=c['rail_positive' if rail else 'positive'])
+            if prefix in ('', 'Surface.'):
+                s.layout(prefix + 'Ova.TCheckbutton', [('Checkbutton.padding', {'sticky': 'nswe', 'children': [
+                    ('Ova.check_' + ('card' if prefix else 'page'), {'side': 'left', 'sticky': ''}),
+                    ('Checkbutton.focus', {'side': 'left', 'sticky': 'w', 'children': [
+                        ('Checkbutton.label', {'sticky': 'nswe'})]})]})])
             s.configure(prefix + 'Ova.TCheckbutton', background=background, foreground=text)
             s.map(prefix + 'Ova.TCheckbutton', background=[('active', background)],
                   foreground=[('disabled', c['disabled'])])
-        s.configure('Brand.Rail.TLabel', font=f('display', 15, 'bold'))
-        s.configure('Notice.TLabel', background=c['warning_fill'], foreground=c['warning'], padding=(12, 8))
-        s.configure('Problem.TLabel', background=c['negative_fill'], foreground=c['negative'], padding=(12, 8))
-        s.configure('Good.TLabel', background=c['positive_fill'], foreground=c['positive'], padding=(12, 8))
+        s.configure('Ova.TCheckbutton', padding=(0, 3))
+        s.configure('Brand.Rail.TLabel', font=f('display', 14, 'bold'))
+        s.layout('Card.TFrame', [('Ova.card', {'sticky': 'nswe'})])
+        s.configure('Card.TFrame', background=c['bg'])
+        s.layout('RailCard.TFrame', [('Ova.rail_card', {'sticky': 'nswe'})])
+        s.configure('RailCard.TFrame', background=c['rail'])
+        for style, tone in (('Notice', 'warning'), ('Problem', 'negative'), ('Good', 'positive')):
+            for prefix, key, behind in (('', 'card', c['surface']), ('Page.', 'page', c['bg'])):
+                s.layout(prefix + style + '.TLabel', [(f'Ova.banner_{tone}_{key}', {'sticky': 'nswe', 'children': [
+                    ('Label.padding', {'sticky': 'nswe', 'children': [('Label.label', {'sticky': 'nswe'})]})]})])
+                s.configure(prefix + style + '.TLabel', background=behind, foreground=c[tone], padding=(px(14), px(10)))
 
-        def button(name, background, foreground, border, hover, *, padding=(14, 7), font=None, anchor='center'):
-            # clam only paints its outline for a non-flat relief; matching the
-            # bevel colors to the fill leaves a single hairline.
-            s.configure(name, padding=padding, background=background, foreground=foreground,
-                        bordercolor=border, lightcolor=background, darkcolor=background,
-                        borderwidth=1, relief='flat' if border == background else 'raised',
-                        anchor=anchor, font=font or f('body', 10), width=0)
-            s.map(name, relief=[('pressed', 'flat' if border == background else 'raised')],
-                  background=[('disabled', background), ('pressed', hover), ('active', hover)],
-                  lightcolor=[('pressed', hover), ('active', hover)],
-                  darkcolor=[('pressed', hover), ('active', hover)],
-                  foreground=[('disabled', c['disabled'])],
-                  bordercolor=[('focus', c['accent'])])
+        def button(kind, foreground, *, padding=(15, 8), font=None, anchor='center', background=None, disabled=None):
+            for prefix, behind in (('', background or c['bg']), ('Surface.', c['surface'])):
+                if prefix + kind not in art:
+                    continue
+                name = prefix + kind + 'TButton'
+                s.layout(name, [(art[prefix + kind], {'sticky': 'nswe', 'children': [
+                    ('Button.padding', {'sticky': 'nswe', 'children': [('Button.label', {'sticky': 'nswe'})]})]})])
+                s.configure(name, padding=padding, background=behind, foreground=foreground,
+                            anchor=anchor, font=font or f('body', 10), width=0, borderwidth=0, relief='flat')
+                s.map(name, foreground=[('disabled', disabled or c['disabled'])], background=[])
 
-        button('TButton', c['surface'], c['text'], c['border'], c['sunken'])
-        button('Accent.TButton', c['accent'], c['accent_text'], c['accent'], c['accent_hover'],
-               font=f('body', 10, 'bold'))
-        s.map('Accent.TButton', background=[('disabled', c['track']), ('pressed', c['accent_hover']),
-                                            ('active', c['accent_hover'])],
-              lightcolor=[('disabled', c['track'])], darkcolor=[('disabled', c['track'])],
-              bordercolor=[('disabled', c['track']), ('focus', c['text'])],
-              foreground=[('disabled', c['disabled'])])
-        button('Quiet.TButton', c['bg'], c['text'], c['bg'], c['track'])
-        button('Quiet.Surface.TButton', c['surface'], c['text'], c['surface'], c['sunken'])
-        button('Danger.TButton', c['surface'], c['negative'], c['border'], c['negative_fill'])
-        button('Tab.TButton', c['surface'], c['muted'], c['surface'], c['sunken'], padding=(12, 6))
-        button('TabActive.TButton', c['selection'], c['text'], c['selection'], c['selection'],
-               padding=(12, 6), font=f('body', 10, 'bold'))
-        button('Step.TButton', c['bg'], c['muted'], c['bg'], c['bg'], padding=(0, 6), anchor='w')
-        s.map('Step.TButton', foreground=[('disabled', c['disabled'])])
-        button('StepDone.TButton', c['bg'], c['text'], c['bg'], c['track'], padding=(0, 6), anchor='w')
-        button('StepActive.TButton', c['bg'], c['accent'], c['bg'], c['bg'], padding=(0, 6),
-               font=f('body', 10, 'bold'), anchor='w')
-        button('Row.TButton', c['surface'], c['text'], c['surface'], c['selection'],
-               padding=(12, 8), anchor='w')
-        button('Nav.TButton', c['rail'], c['rail_muted'], c['rail'], c['rail_active'],
-               padding=(18, 10), anchor='w', font=f('body', 10))
-        s.map('Nav.TButton', foreground=[('active', c['rail_text'])], bordercolor=[('focus', c['rail_muted'])])
-        button('NavActive.TButton', c['rail_active'], c['rail_text'], c['rail_active'], c['rail_active'],
-               padding=(18, 10), anchor='w', font=f('body', 10, 'bold'))
-        s.map('NavActive.TButton', bordercolor=[('focus', c['rail_muted'])])
-        button('Rail.TButton', c['rail'], c['rail_muted'], c['rail_border'], c['rail_active'], padding=(10, 5),
-               font=f('body', 9))
-        s.map('Rail.TButton', foreground=[('active', c['rail_text'])], bordercolor=[('focus', c['rail_muted'])])
+        bold = f('body', 10, 'bold')
+        button('', c['text'])
+        button('Accent.', c['accent_text'], font=bold)
+        button('Danger.', c['negative'])
+        button('Quiet.', c['text'])
+        button('Tab.', c['muted'], padding=(14, 7))
+        button('TabActive.', c['accent'], padding=(14, 7), font=bold)
+        button('Row.', c['text'], padding=(12, 9), anchor='w')
+        button('Step.', c['muted'], padding=(8, 7), anchor='w')
+        button('StepDone.', c['text'], padding=(8, 7), anchor='w')
+        button('StepActive.', c['accent'], padding=(8, 7), anchor='w', font=bold, disabled=c['accent'])
+        button('Nav.', c['rail_muted'], padding=(12, 9), anchor='w', background=c['rail'])
+        s.map('Nav.TButton', foreground=[('active', c['rail_text'])])
+        button('NavActive.', c['rail_text'], padding=(12, 9), anchor='w', font=bold, background=c['rail'])
+        button('Rail.', c['rail_muted'], padding=(12, 6), font=f('body', 9), background=c['rail'])
+        s.map('Rail.TButton', foreground=[('active', c['rail_text'])])
 
         s.configure('TSeparator', background=c['border'])
-        s.configure('TEntry', fieldbackground=c['field'], foreground=c['text'], padding=(9, 7),
-                    selectbackground=c['selection'], selectforeground=c['text'], insertcolor=c['text'],
-                    bordercolor=c['border'], lightcolor=c['field'], darkcolor=c['field'])
-        s.map('TEntry', fieldbackground=[('disabled', c['sunken']), ('readonly', c['sunken'])],
-              foreground=[('disabled', c['disabled'])],
-              bordercolor=[('focus', c['accent'])],
-              lightcolor=[('focus', c['accent']), ('disabled', c['sunken'])],
-              darkcolor=[('focus', c['accent']), ('disabled', c['sunken'])])
-        s.configure('Treeview', rowheight=self.px(34), background=c['surface'], fieldbackground=c['surface'],
+        for name, key in (('TEntry', 'card'), ('Page.TEntry', 'page')):
+            s.layout(name, [('Ova.field_' + key, {'sticky': 'nswe', 'children': [
+                ('Entry.padding', {'sticky': 'nswe', 'children': [('Entry.textarea', {'sticky': 'nswe'})]})]})])
+        s.configure('TEntry', background=c['surface'], fieldbackground=c['field'], foreground=c['text'],
+                    padding=(px(11), px(8)), selectbackground=c['selection'], selectforeground=c['text'],
+                    insertcolor=c['text'], borderwidth=0)
+        s.map('TEntry', foreground=[('disabled', c['disabled'])], fieldbackground=[('disabled', c['sunken'])])
+        s.configure('Page.TEntry', background=c['bg'])
+        s.configure('Treeview', rowheight=px(36), background=c['surface'], fieldbackground=c['surface'],
                     foreground=c['text'], borderwidth=0, font=f('body', 10))
         s.map('Treeview', background=[('selected', c['selection'])], foreground=[('selected', c['text'])])
         s.configure('Treeview.Heading', background=c['surface'], foreground=c['muted'],
                     font=f('body', 9), padding=(10, 8), relief='flat', borderwidth=0)
         s.map('Treeview.Heading', background=[('active', c['sunken'])], foreground=[('active', c['text'])])
         s.layout('Treeview', [('Treeview.treearea', {'sticky': 'nswe'})])
-        s.configure('TScrollbar', background=c['border'], arrowcolor=c['muted'], borderwidth=0,
-                    gripcount=0, arrowsize=self.px(12), troughcolor=c['bg'],
-                    bordercolor=c['bg'], lightcolor=c['border'], darkcolor=c['border'])
-        s.map('TScrollbar', background=[('active', c['muted'])])
-        configure_checkboxes(self.root, s, c)
+        for prefix, trough in (('', c['bg']), ('Surface.', c['surface'])):
+            s.configure(prefix + 'Vertical.TScrollbar', background=c['track'], arrowcolor=c['muted'], borderwidth=0,
+                        gripcount=0, arrowsize=px(11), troughcolor=trough, width=px(11),
+                        bordercolor=trough, lightcolor=c['track'], darkcolor=c['track'])
+            s.map(prefix + 'Vertical.TScrollbar', background=[('active', c['disabled'])])
+            s.layout(prefix + 'Vertical.TScrollbar', [('Vertical.Scrollbar.trough', {'sticky': 'ns', 'children': [
+                ('Vertical.Scrollbar.thumb', {'expand': '1', 'sticky': 'nswe'})]})])
         self.refresh_windows()
-        for frame, tone in list(self.panels.items()):
-            try:
-                self.paint_panel(frame, tone)
-            except tk.TclError:
-                pass
         for widget in list(self.widgets):
             try:
                 widget.apply_theme(c)
@@ -244,7 +332,7 @@ class ThemeManager:
                 widget.configure(background=c['sunken'], foreground=c['text'],
                                  insertbackground=c['text'], selectbackground=c['selection'],
                                  selectforeground=c['text'], relief='flat', borderwidth=0,
-                                 highlightthickness=0, padx=self.px(12), pady=self.px(10))
+                                 highlightthickness=0, padx=self.px(14), pady=self.px(12))
             for child in widget.winfo_children():
                 visit(child)
         visit(self.root)

@@ -61,7 +61,7 @@ appear in these images.
 
 ![Empty Exports view when OVF Tool has not been found](docs/images/tool-missing.png)
 
-![Exports view at the 960 by 600 minimum window size](docs/images/exports-minimum.png)
+![Exports view at the 1080 by 660 minimum window size](docs/images/exports-minimum.png)
 
 </details>
 
@@ -165,7 +165,7 @@ py -3 launch.pyw
 Shortcuts: **Ctrl+1/2/3** switch views, **Ctrl+F** jumps to VM search, **F5** refreshes the VM list,
 **Up/Down** move through the task list. The selected task has **Transfer** and **Tool log** tabs,
 plus **Open folder** and **Copy path**. Change the theme from the rail or in **Settings**.
-The minimum window size is 960 × 600.
+The minimum window size is 1080 × 660.
 
 Server aliases and a vCenter plus its ESXi host can refer to the same physical resources. The per-address queue cannot identify all such overlaps. Concurrent exports still share your PC's NIC, storage and any common network links.
 

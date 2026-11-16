@@ -42,7 +42,7 @@ class UITests(unittest.TestCase):
         self.addCleanup(lambda: close_root(root))
         app = App(root, tool_store=False, tool_locator=lambda *args: None)
         self.assertIn("missing", app.tool_status.get())
-        self.assertEqual(app.tool_label["style"], "Error.Rail.TLabel")
+        self.assertEqual(app.tool_label["style"], "Error.RailCard.TLabel")
         self.assertEqual(str(app.queue.new_button["state"]), "disabled")
         self.assertIn("not set up", app.queue.empty_title["text"])
         self.assertEqual(app.queue.empty_action["text"], "Open settings")
@@ -76,7 +76,7 @@ class UITests(unittest.TestCase):
                 app.choose_tool()
             self.assertEqual(app.manager.tool, path)
             store.save.assert_called_once_with(path)
-            self.assertEqual(app.tool_label["style"], "Success.Rail.TLabel")
+            self.assertEqual(app.tool_label["style"], "Success.RailCard.TLabel")
             self.assertEqual(app.settings_view.tool_location.get(), str(path))
             app.auto_tool()
             store.save.assert_called_with(None)
@@ -163,7 +163,7 @@ class UITests(unittest.TestCase):
         self.assertEqual(app.queue.selected, second.id)
         self.assertEqual(app.queue.panel.value, 15)
         self.assertEqual(app.queue.message["text"], "")
-        self.assertIn("(1)", app.nav["queue"]["text"])
+        self.assertEqual(app.nav["queue"]["text"].split(), ["Exports", "1"])
         close_root(root)
 
     def test_tool_log_tab_shows_in_memory_lines_for_the_selected_task(self):
@@ -257,7 +257,7 @@ class UITests(unittest.TestCase):
     def test_mousewheel_scrolls_task_list_and_transfer_detail_body(self):
         root = tk.Tk()
         app = App(root)
-        root.geometry("960x600")
+        root.geometry("1080x660")
         self.addCleanup(lambda: close_root(root) if root.winfo_exists() else None)
         jobs = []
         for i in range(40):

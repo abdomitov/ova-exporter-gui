@@ -41,9 +41,9 @@ class App:
             self.settings_error = str(error)
         root.title(f'{APP_NAME} {VERSION}')
         set_icon(root)
-        root.geometry(f'{max(960, min(1180, root.winfo_screenwidth() - 80))}x'
-                      f'{max(600, min(760, root.winfo_screenheight() - 100))}')
-        root.minsize(960, 600)
+        root.geometry(f'{max(1080, min(1200, root.winfo_screenwidth() - 80))}x'
+                      f'{max(660, min(780, root.winfo_screenheight() - 100))}')
+        root.minsize(1080, 660)
         directory = getattr(self.settings, 'directory', None)
         preference = directory / 'appearance.json' if remember_theme and isinstance(directory, Path) else None
         self.tool_store = (ToolLocation(directory) if isinstance(directory, Path) else None) if tool_store is None else tool_store or None
@@ -67,37 +67,45 @@ class App:
         root.rowconfigure(0, weight=1)
 
         # Navigation rail.
-        rail = self.theme.panel(root, tone='rail', border=False, width=px(212))
+        rail = self.theme.panel(root, tone='rail', width=px(232))
         self.rail = rail
         rail.grid(row=0, column=0, sticky='ns')
         rail.pack_propagate(False)
-        brand = ttk.Frame(rail, style='Rail.TFrame', padding=(px(18), px(22), px(18), px(20)))
+        brand = ttk.Frame(rail, style='Rail.TFrame', padding=(px(20), px(24), px(18), px(22)))
         brand.pack(fill='x')
         logo = getattr(root, '_ova_logo', None)
-        self.brand_icon = logo.subsample(max(1, logo.width() // px(30))) if logo else None
+        self.brand_icon = logo.subsample(max(1, logo.width() // px(34))) if logo else None
         if self.brand_icon:
-            ttk.Label(brand, image=self.brand_icon, style='Rail.TLabel').pack(side='left', padx=(0, px(10)))
+            ttk.Label(brand, image=self.brand_icon, style='Rail.TLabel').pack(side='left', padx=(0, px(12)))
         names = ttk.Frame(brand, style='Rail.TFrame')
         names.pack(side='left')
         ttk.Label(names, text='OVA Exporter', style='Brand.Rail.TLabel').pack(anchor='w')
         ttk.Label(names, text='for VMware OVF Tool', style='Small.Rail.TLabel').pack(anchor='w')
         self.nav = {}
+        self.nav_labels = dict(VIEWS)
         for name, label in VIEWS:
-            button = ttk.Button(rail, text=label, style='Nav.TButton', command=lambda name=name: self.navigate(name))
-            button.pack(fill='x')
+            button = ttk.Button(rail, text='  ' + label, style='Nav.TButton', compound='left',
+                                command=lambda name=name: self.navigate(name))
+            button.pack(fill='x', padx=px(12), pady=(0, px(4)))
             self.nav[name] = button
-        foot = ttk.Frame(rail, style='Rail.TFrame', padding=(px(18), 0, px(18), px(18)))
+        foot = ttk.Frame(rail, style='Rail.TFrame', padding=(px(14), 0, px(14), px(16)))
         foot.pack(side='bottom', fill='x')
-        self.tool_label = ttk.Label(foot, textvariable=self.tool_status, style='Success.Rail.TLabel', wraplength=px(176))
+        card = ttk.Frame(foot, style='RailCard.TFrame', padding=(px(14), px(12)))
+        card.pack(fill='x')
+        self.tool_label = ttk.Label(card, style='RailCard.TLabel',
+                                    compound='left', font=self.theme.font('body', 10, 'bold'))
         self.tool_label.pack(anchor='w')
-        self.tool_hint = ttk.Label(foot, style='Small.Rail.TLabel', wraplength=px(176))
-        self.tool_hint.pack(anchor='w', pady=(2, px(14)))
-        self.theme_button = ttk.Button(foot, command=self.toggle_theme, style='Rail.TButton')
-        self.theme_button.pack(anchor='w')
-        ttk.Label(foot, text=f'Version {VERSION}', style='Small.Rail.TLabel').pack(anchor='w', pady=(px(12), 0))
+        self.tool_hint = ttk.Label(card, style='Small.RailCard.TLabel', wraplength=px(170))
+        self.tool_hint.pack(anchor='w', pady=(3, 0))
+        row = ttk.Frame(foot, style='Rail.TFrame')
+        row.pack(fill='x', pady=(px(12), 0))
+        self.theme_button = ttk.Button(row, command=self.toggle_theme, style='Rail.TButton')
+        self.theme_button.pack(side='left')
+        ttk.Label(row, text=f'v{VERSION}', style='Small.Rail.TLabel').pack(side='right')
 
         # Main area: one view at a time above a single status line.
-        main = ttk.Frame(root, padding=(px(28), px(24), px(28), px(14)))
+        gutter = self.theme.card_margin[0]
+        main = ttk.Frame(root, padding=(px(30) - gutter, px(26), px(30) - gutter, px(14)))
         self.main = main
         main.grid(row=0, column=1, sticky='nsew')
         main.columnconfigure(0, weight=1)
@@ -110,7 +118,7 @@ class App:
         self.views = {'queue': self.queue, 'new': self.flow, 'settings': self.settings_view}
         footer = ttk.Frame(main)
         self.footer = footer
-        footer.grid(row=1, column=0, sticky='ew', pady=(px(12), 0))
+        footer.grid(row=1, column=0, sticky='ew', pady=(px(6), 0), padx=gutter)
         footer.columnconfigure(0, weight=1)
         self.caption_label = ttk.Label(footer, textvariable=self.caption, style='Small.TLabel', wraplength=px(560))
         self.caption_label.grid(row=0, column=0, sticky='w')
@@ -134,6 +142,16 @@ class App:
     # -- appearance and navigation ----------------------------------------
     def apply_theme(self, colors):
         self.theme_button.configure(text='Light theme' if self.theme.mode == 'dark' else 'Dark theme')
+        self.paint_navigation()
+
+    def paint_navigation(self):
+        icons = {'queue': 'exports', 'new': 'new', 'settings': 'settings'}
+        for key, button in self.nav.items():
+            active = key == self.current
+            normal, lit = (self.theme.assets.get('nav_' + icons[key] + suffix) for suffix in ('', '_hover'))
+            button.configure(style='NavActive.TButton' if active else 'Nav.TButton',
+                             image=(lit,) if active else (normal, 'active', lit))
+        self.tool_label.configure(image=self.theme.assets.get('dot_positive' if self.tool_ready else 'dot_negative'))
 
     def toggle_theme(self):
         self.theme.toggle()
@@ -153,14 +171,14 @@ class App:
                 view.grid(row=0, column=0, sticky='nsew')
             else:
                 view.grid_remove()
-            self.nav[key].configure(style='NavActive.TButton' if key == name else 'Nav.TButton')
+        self.paint_navigation()
         self.queue.set_active(name == 'queue')
         if name == 'settings':
             self.refresh_tool()
 
     def queue_changed(self, counts):
         waiting = counts['active'] + counts['queued']
-        self.nav['queue'].configure(text=f'Exports  ({waiting})' if waiting else 'Exports')
+        self.nav['queue'].configure(text=f'  Exports   {waiting}' if waiting else '  Exports')
 
     def session_changed(self):
         self.settings_view.refresh_session()
@@ -178,8 +196,10 @@ class App:
         if not busy:
             self.manager.tool = self.tool_path or BASE / 'ovftool' / 'ovftool.exe'
         self.tool_status.set('OVF Tool ready' if ready else 'OVF Tool missing')
-        self.tool_label.configure(style='Success.Rail.TLabel' if ready else 'Error.Rail.TLabel')
+        self.tool_label.configure(text='  ' + self.tool_status.get(),
+                                  style='Success.RailCard.TLabel' if ready else 'Error.RailCard.TLabel')
         self.tool_hint.configure(text='Exports are available.' if ready else 'Set its location in Settings to enable exports.')
+        self.paint_navigation()
         self.queue.set_tool_ready(ready)
         self.settings_view.refresh_tool(ready, self.tool_path, busy)
         return ready
@@ -310,7 +330,7 @@ class App:
         dialog.transient(self.root)
         dialog.resizable(True, False)
         dialog.minsize(px(600), 1)
-        frame = ttk.Frame(dialog, padding=px(24))
+        frame = ttk.Frame(dialog, padding=px(28))
         frame.pack(fill='both', expand=True)
         ttk.Label(frame, text='Choose how to close the app', style='Title.TLabel').pack(anchor='w')
         jobs = self.manager.unfinished()
@@ -318,7 +338,7 @@ class App:
         if len(jobs) > 5:
             tasks += '\n…and ' + str(len(jobs) - 5) + ' more tasks'
         ttk.Label(frame, text=tasks, wraplength=px(550)).pack(anchor='w', pady=(px(10), px(12)))
-        ttk.Label(frame, text=STOP_WARNING, wraplength=px(526), style='Notice.TLabel').pack(anchor='w', fill='x')
+        ttk.Label(frame, text=STOP_WARNING, wraplength=px(516), style='Page.Notice.TLabel').pack(anchor='w', fill='x')
         ttk.Label(frame, text='Cancel and wait lets OVF Tool attempt cleanup. It can stall. Force stop and exit '
                   'ends only this app\'s local tools; server cleanup remains unconfirmed.',
                   wraplength=px(550), style='Muted.TLabel').pack(anchor='w', pady=(px(12), px(18)))
@@ -350,6 +370,14 @@ class App:
         dialog.bind('<Escape>', lambda event: keep_open())
         dialog.grab_set()
         keep.focus_set()
+
+        def center():
+            if dialog.winfo_exists():
+                dialog.update_idletasks()
+                x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_reqwidth()) // 2
+                y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_reqheight()) // 3
+                dialog.geometry(f'+{max(0, x)}+{max(0, y)}')
+        dialog.after_idle(center)
 
     def finish_close(self):
         if self.exit_dialog and self.exit_dialog.winfo_exists():

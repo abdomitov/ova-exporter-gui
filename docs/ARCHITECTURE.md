@@ -12,8 +12,8 @@ Run the app from the repository root with `py -3 launch.pyw`.
 | `export_flow.py` | New export view: connection, certificate review, inventory and destination steps |
 | `settings_view.py` | OVF Tool location, appearance, update controls and saved-data clearing |
 | `task_view.py` | Presentation state and task status labels |
-| `theme.py` | Light/dark tokens, typefaces, DPI scaling, ttk styles and appearance preference |
-| `ui_assets.py` | Code-drawn checkbox asset |
+| `theme.py` | Light/dark tokens, typefaces, DPI scaling, ttk image elements and styles, appearance preference |
+| `ui_assets.py` | Code-drawn artwork: rounded cards, buttons and fields, shadows, icons, check boxes |
 | `scrolling.py` | Scrollable bodies and wheel routing |
 | `jobs.py` | Bounded scheduler, process ownership, cancellation and cleanup checks |
 | `exporter.py` | OVF Tool arguments, progress parsing, throughput and OVA checksums |

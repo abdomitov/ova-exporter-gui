@@ -9,7 +9,7 @@ from tkinter import ttk
 
 from theme import PALETTES, theme_for
 
-STAGES = (('Preflight', 1.2), ('Transfer', 5.0), ('Verify', 1.3), ('Server check', 1.7))
+STAGES = (('Preflight', 2.2), ('Transfer', 5.0), ('Verify', 1.6), ('Server check', 2.4))
 
 TITLES = {
     'idle': 'Ready to export', 'preparing': 'Preparing export', 'queued': 'Waiting in the queue',
@@ -22,7 +22,7 @@ TITLES = {
 HINTS = {
     'idle': 'Progress and speed will appear here.', 'queued': 'Starts when this server is free.',
     'verifying': 'Checking every file against the manifest.', 'done': 'Your OVA is ready to use.',
-    'done_warning': 'Check the VM state in the message below.',
+    'done_warning': 'Check the VM state in the message above.',
     'cancelling': 'Waiting for OVF Tool to stop.', 'cleaning': 'Confirming the server released the export.',
     'cleanup_required': 'Review this VM in vCenter.', 'stalled': 'OVF Tool has not exited.',
     'force_stopping': 'Server cleanup will remain unconfirmed.',
@@ -89,7 +89,7 @@ class TransferPanel(ttk.Frame):
         self.theme = theme_for(self)
         self.px = self.theme.px if self.theme else round
         self.font = self.theme.font if self.theme else (lambda role='body', size=10, weight='normal': ('TkDefaultFont', size, weight))
-        self.canvas = tk.Canvas(self, height=self.px(340), highlightthickness=0, borderwidth=0)
+        self.canvas = tk.Canvas(self, height=self.px(370), highlightthickness=0, borderwidth=0)
         self.canvas.pack(fill='both', expand=True)
         self.canvas.bind('<Configure>', lambda event: self.draw())
         if self.theme:
@@ -105,7 +105,7 @@ class TransferPanel(ttk.Frame):
         canvas.delete('all')
         width, height = max(canvas.winfo_width(), px(320)), max(canvas.winfo_height(), px(300))
         canvas.configure(background=c['surface'])
-        pad = px(24)
+        pad = px(22)
         left, right = pad, width - pad
         states = stage_states(self.phase, self.value)
         problem = 'problem' in states
@@ -113,14 +113,14 @@ class TransferPanel(ttk.Frame):
         ink = c['negative'] if problem else c['warning'] if warning else c['positive'] if self.phase == 'done' else c['text']
 
         # Percentage and what is happening now.
-        number = canvas.create_text(left, pad - px(6), text=f'{self.value:.0f}%' if self.phase != 'idle' else '—',
-                                    anchor='nw', fill=ink, font=font('display', 38, 'bold'))
+        number = canvas.create_text(left - px(2), pad - px(10), text=f'{self.value:.0f}%' if self.phase != 'idle' else '—',
+                                    anchor='nw', fill=ink, font=font('numeric', 44, 'bold'))
         box = canvas.bbox(number)
-        text_x = max(left + px(118), box[2] + px(18))
-        canvas.create_text(text_x, pad, text=TITLES.get(self.phase, self.phase), anchor='nw',
-                           width=max(px(120), right - text_x), fill=c['text'], font=font('body', 13, 'bold'))
+        text_x = max(left + px(128), box[2] + px(20))
+        canvas.create_text(text_x, pad - px(2), text=TITLES.get(self.phase, self.phase), anchor='nw',
+                           width=max(px(120), right - text_x), fill=c['text'], font=font('display', 14, 'bold'))
         if self.phase == 'error':
-            hint = 'The reason is shown below.'
+            hint = 'The reason is shown above.'
         else:
             hint = HINTS.get(self.phase) or remaining_text(self.elapsed, self.value, self.speed)
         canvas.create_text(text_x, pad + px(26), text=hint, anchor='nw', width=max(px(120), right - text_x),
@@ -128,54 +128,61 @@ class TransferPanel(ttk.Frame):
         canvas.create_text(text_x, pad + px(46), text=self.detail, anchor='nw', width=max(px(120), right - text_x),
                            fill=c['muted'], font=font('body', 9), tags='transfer_detail')
 
-        # Stage track: four segments sized by how long each stage usually takes.
-        top = pad + px(84)
-        bar, gap = px(10), px(4)
+        # Stage track: four rounded segments sized by how long each stage usually takes.
+        top = pad + px(92)
+        bar, gap = px(8), px(12)
+        middle = top + bar / 2
         total = sum(weight for _, weight in STAGES)
         usable = right - left - gap * (len(STAGES) - 1)
         x = left
+        assets = self.theme.assets if self.theme else None
         for (label, weight), state in zip(STAGES, states):
             end = x + usable * weight / total
-            canvas.create_rectangle(x, top, end, top + bar, fill=c['track'], outline='', tags='stage_track')
+            start, stop = x + bar / 2, end - bar / 2
+            canvas.create_line(start, middle, stop, middle, fill=c['track'], width=bar, capstyle='round', tags='stage_track')
             fill = {'done': c['accent'], 'active': c['graph'], 'warning': c['warning'],
                     'problem': c['negative']}.get(state)
             if label == 'Transfer' and state != 'done' and 0 < self.value < 100:
-                canvas.create_rectangle(x, top, x + (end - x) * self.value / 100, top + bar,
-                                        fill=c['accent'] if state == 'active' else fill or c['accent'],
-                                        outline='', tags='progress_fill')
+                canvas.create_line(start, middle, start + (stop - start) * self.value / 100, middle, width=bar,
+                                   fill=c['accent'] if state == 'active' else fill or c['accent'],
+                                   capstyle='round', tags='progress_fill')
             elif fill:
-                canvas.create_rectangle(x, top, end, top + bar, fill=fill, outline='',
-                                        tags='progress_fill' if label == 'Transfer' else 'stage_fill')
+                canvas.create_line(start, middle, stop, middle, fill=fill, width=bar, capstyle='round',
+                                   tags='progress_fill' if label == 'Transfer' else 'stage_fill')
             current = state in ('active', 'warning', 'problem')
-            canvas.create_text(x, top + bar + px(6), text=label, anchor='nw',
+            label_x = x
+            if assets:
+                canvas.create_image(x, top + bar + px(17), anchor='w', image=assets.get(f'stage_{state}_card'), tags='stage_mark')
+                label_x = x + px(22)
+            canvas.create_text(label_x, top + bar + px(17), text=label, anchor='w',
                                fill={'problem': c['negative'], 'warning': c['warning']}.get(state, c['text'] if state != 'todo' else c['muted']),
                                font=font('body', 9, 'bold' if current else 'normal'), tags='stage_label')
             x = end + gap
 
-        # Statistics.
-        top += px(52)
+        # Statistics, separated by hairlines.
+        top += px(58)
         finished_transfer = self.phase in ('done', 'done_warning', 'verifying')
         rate = self.written / self.elapsed if finished_transfer and self.elapsed > 0 else self.speed
         metrics = [('Average speed' if finished_transfer else 'Speed', f'{rate / 1_000_000:.1f} MB/s'),
                    ('Written', size_text(self.written)), ('Elapsed', duration_text(self.elapsed)),
                    ('Peak', f'{self.peak_speed / 1_000_000:.1f} MB/s')]
+        canvas.create_line(left, top - px(12), right, top - px(12), fill=c['grid'])
         for index, (label, value) in enumerate(metrics):
             x = left + index * (right - left) / len(metrics)
+            if index:
+                canvas.create_line(x - px(14), top, x - px(14), top + px(40), fill=c['grid'])
             canvas.create_text(x, top, text=label, anchor='nw', fill=c['muted'], font=font('body', 9))
-            canvas.create_text(x, top + px(17), text=value, anchor='nw', fill=c['text'],
-                               font=font('display', 15, 'bold'), tags='speed_peak' if label == 'Peak' else 'stat')
+            canvas.create_text(x, top + px(18), text=value, anchor='nw', fill=c['text'],
+                               font=font('numeric', 14 if right - left >= px(400) else 12, 'bold'),
+                               tags='speed_peak' if label == 'Peak' else 'stat')
 
         # Speed history, plotted against progress so its width matches the track.
-        top, bottom = top + px(58), height - pad
+        top, bottom = top + px(78), height - pad
         if bottom - top < px(40):
             return
-        canvas.create_rectangle(left, top, right, bottom, fill=c['sunken'], outline='')
-        for fraction in (0.5,):
+        for fraction in (0, 0.5, 1):
             y = bottom - (bottom - top) * fraction
-            canvas.create_line(left, y, right, y, fill=c['grid'], tags='speed_grid')
-        for percent in range(10, 100, 10):
-            x = left + (right - left) * percent / 100
-            canvas.create_line(x, top, x, bottom, fill=c['grid'], tags='speed_grid')
+            canvas.create_line(left, y, right, y, fill=c['grid'], dash=() if not fraction else (3, 4), tags='speed_grid')
         if self.history:
             ceiling = max(1_000_000, self.peak_speed * 1.15)
             points = []
@@ -186,7 +193,9 @@ class TransferPanel(ttk.Frame):
                 canvas.create_polygon([points[0], bottom] + points + [points[-2], bottom],
                                       fill=c['graph'], outline='', tags='speed_history')
                 canvas.create_line(*points, fill=c['graph_line'], width=px(2), tags='speed_outline')
-            canvas.create_text(left + px(8), top + px(6), text=f'{ceiling / 1_000_000:.0f} MB/s', anchor='nw',
+            canvas.create_text(right, top - px(4), text=f'{ceiling / 1_000_000:.0f} MB/s', anchor='se',
+                               fill=c['muted'], font=font('body', 8))
+            canvas.create_text(left, top - px(4), text='Speed across the transfer', anchor='sw',
                                fill=c['muted'], font=font('body', 8))
         else:
             canvas.create_text((left + right) / 2, (top + bottom) / 2, text='Transfer speed will be drawn here',

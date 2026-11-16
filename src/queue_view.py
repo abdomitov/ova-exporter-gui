@@ -10,6 +10,7 @@ from scrolling import ScrollBody
 from task_view import TaskView
 from theme import PALETTES, theme_for
 from transfer_panel import TransferPanel
+from ui_assets import rounded_png
 
 ACTIVE_STATES = ('running', 'verifying', 'cancelling', 'cleaning', 'stalled', 'force_stopping')
 LOG_TAIL = 500
@@ -42,13 +43,17 @@ class TaskList(ttk.Frame):
         font = self.theme.font if self.theme else (lambda role='body', size=10, weight='normal': ('TkDefaultFont', size, weight))
         self.fonts = {'name': tkfont.Font(self, font=font('body', 10, 'bold')),
                       'small': tkfont.Font(self, font=font('body', 9)),
-                      'number': tkfont.Font(self, font=font('display', 12, 'bold'))}
-        self.row_height = self.px(74)
+                      'number': tkfont.Font(self, font=font('numeric', 12, 'bold'))}
+        self.row_height = self.px(78)
+        self.selection_image = None
+        self.selection_size = None
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
-        self.canvas = tk.Canvas(self, highlightthickness=1, borderwidth=0, takefocus=1, width=1, height=1)
+        self.canvas = tk.Canvas(self, highlightthickness=0, borderwidth=0, takefocus=1, width=1, height=1)
         self.canvas.grid(row=0, column=0, sticky='nsew')
-        self.scroll = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
+        self.scroll = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview, style='Surface.Vertical.TScrollbar')
+        for name in ('<FocusIn>', '<FocusOut>'):
+            self.canvas.bind(name, lambda event: self.redraw_row(self.selected), add='+')
         self.canvas.configure(yscrollcommand=self.scroll.set)
         self.canvas.bind('<Configure>', lambda event: self.redraw())
         self.canvas.bind('<Button-1>', self.click)
@@ -61,8 +66,8 @@ class TaskList(ttk.Frame):
 
     def apply_theme(self, colors):
         self.colors = colors
-        self.canvas.configure(background=colors['surface'], highlightbackground=colors['surface'],
-                              highlightcolor=colors['accent'])
+        self.canvas.configure(background=colors['surface'])
+        self.selection_size = None
         self.redraw()
 
     def wheel_units(self, units):
@@ -137,6 +142,18 @@ class TaskList(ttk.Frame):
             text = text[:-1]
         return text + '…'
 
+    def selection_background(self, width, height):
+        """A rounded highlight sized to the row; rebuilt only when the list is resized."""
+        focused = self.canvas.focus_displayof() is self.canvas if self.canvas.winfo_exists() else False
+        key = (width, height, self.colors['selection'], focused)
+        if key != self.selection_size:
+            self.selection_size = key
+            data = rounded_png(width, height, self.px(10), fill=self.colors['selection'], backdrop=self.colors['surface'],
+                               border=self.colors['accent'] if focused else None, border_width=self.px(2))
+            self.selection_image = (self.theme.assets.set('row_selected', data) if self.theme
+                                    else tk.PhotoImage(master=self, data=__import__('base64').b64encode(data)))
+        return self.selection_image
+
     def redraw_row(self, job_id):
         if job_id not in self.order:
             return
@@ -146,32 +163,31 @@ class TaskList(ttk.Frame):
         canvas.delete(tag)
         width = max(canvas.winfo_width(), px(200))
         top = self.order.index(job_id) * self.row_height
-        left, right = px(18), width - px(16)
-        chosen = job_id == self.selected
-        if chosen:
-            canvas.create_rectangle(0, top, width, top + self.row_height, fill=c['selection'], outline='', tags=tag)
-            canvas.create_rectangle(0, top, px(3), top + self.row_height, fill=c['accent'], outline='', tags=tag)
+        inset = px(4)
+        left, right = px(18), width - px(18)
+        if job_id == self.selected:
+            canvas.create_image(inset, top + inset, anchor='nw', tags=tag,
+                                image=self.selection_background(width - 2 * inset, self.row_height - 2 * inset))
         tone = c[state_tone(view.state)]
         percent = f'{view.percent:.0f}%'
         number_room = self.fonts['number'].measure(percent) + px(12)
-        canvas.create_text(right, top + px(11), text=percent, anchor='ne', fill=c['text'],
+        canvas.create_text(right, top + px(15), text=percent, anchor='ne', fill=c['text'],
                            font=self.fonts['number'], tags=tag)
-        canvas.create_text(left, top + px(12), anchor='nw', fill=c['text'], font=self.fonts['name'], tags=tag,
+        canvas.create_text(left, top + px(16), anchor='nw', fill=c['text'], font=self.fonts['name'], tags=tag,
                            text=self.fit(view.job.vm['name'], self.fonts['name'], right - left - number_room))
         status = view.status_text()
         if view.state == 'running' and view.percent:
             status += f', {view.speed / 1_000_000:.1f} MB/s'
         status_room = self.fonts['small'].measure(status) + px(12)
-        canvas.create_text(right, top + px(35), text=status, anchor='ne', fill=tone, font=self.fonts['small'], tags=tag)
-        canvas.create_text(left, top + px(35), anchor='nw', fill=c['muted'], font=self.fonts['small'], tags=tag,
+        canvas.create_text(right, top + px(38), text=status, anchor='ne', fill=tone, font=self.fonts['small'], tags=tag)
+        canvas.create_text(left, top + px(38), anchor='nw', fill=c['muted'], font=self.fonts['small'], tags=tag,
                            text=self.fit(view.job.client.authority, self.fonts['small'], right - left - status_room))
-        bar = top + px(58)
-        canvas.create_rectangle(left, bar, right, bar + px(4), fill=c['track'], outline='', tags=tag)
+        bar, thick = top + px(60), px(4)
+        canvas.create_line(left, bar, right, bar, fill=c['track'], width=thick, capstyle='round', tags=tag)
         if view.percent:
-            canvas.create_rectangle(left, bar, left + (right - left) * view.percent / 100, bar + px(4),
-                                    fill=tone if state_tone(view.state) != 'muted' else c['disabled'],
-                                    outline='', tags=tag)
-        canvas.create_line(0, top + self.row_height - 1, width, top + self.row_height - 1, fill=c['border'], tags=tag)
+            end = left + (right - left) * view.percent / 100
+            canvas.create_line(left, bar, max(left + 1, end), bar, width=thick, capstyle='round', tags=tag,
+                               fill=tone if state_tone(view.state) != 'muted' else c['disabled'])
 
 
 class QueueView(ttk.Frame):
@@ -195,7 +211,7 @@ class QueueView(ttk.Frame):
         self.rowconfigure(1, weight=1)
 
         header = ttk.Frame(self)
-        header.grid(row=0, column=0, sticky='ew', pady=(0, px(16)))
+        header.grid(row=0, column=0, sticky='ew', pady=(0, px(10)), padx=self.theme.card_margin[0] if self.theme else 0)
         header.columnconfigure(0, weight=1)
         ttk.Label(header, text='Exports', style='Title.TLabel').grid(row=0, column=0, sticky='w')
         self.summary_label = ttk.Label(header, textvariable=self.summary, style='Muted.TLabel')
@@ -211,8 +227,8 @@ class QueueView(ttk.Frame):
 
         make_panel = self.theme.panel if self.theme else (lambda parent, **kw: tk.Frame(parent))
         list_panel = make_panel(body)
-        list_panel.grid(row=0, column=0, sticky='nsew', padx=(0, px(16)))
-        list_panel.configure(width=px(290))
+        list_panel.grid(row=0, column=0, sticky='nsew', padx=(0, px(2)))
+        list_panel.configure(width=px(300))
         list_panel.grid_propagate(False)
         list_panel.pack_propagate(False)
         self.list = TaskList(list_panel, self.cards, self.selection_changed)
@@ -223,7 +239,7 @@ class QueueView(ttk.Frame):
         detail.grid(row=0, column=1, sticky='nsew')
         detail.columnconfigure(0, weight=1)
         detail.rowconfigure(2, weight=1)
-        head = ttk.Frame(detail, style='Surface.TFrame', padding=(px(24), px(20), px(24), px(12)))
+        head = ttk.Frame(detail, style='Surface.TFrame', padding=(px(22), px(16), px(22), px(10)))
         self.head = head
         head.grid(row=0, column=0, sticky='ew')
         head.columnconfigure(1, weight=1)
@@ -232,38 +248,38 @@ class QueueView(ttk.Frame):
         self.detail_target = tk.StringVar()
         self.title_label = ttk.Label(head, textvariable=self.detail_title, style='Title.Surface.TLabel', wraplength=px(420))
         self.title_label.grid(row=0, column=0, columnspan=2, sticky='w')
-        self.cancel_button = ttk.Button(head, text='Cancel', style='Danger.TButton', command=self.cancel_current)
+        self.cancel_button = ttk.Button(head, text='Cancel', style='Surface.Danger.TButton', command=self.cancel_current)
         ttk.Label(head, text='From', style='Muted.Surface.TLabel').grid(row=1, column=0, sticky='nw', pady=(8, 0), padx=(0, 12))
         ttk.Label(head, textvariable=self.detail_source, style='Surface.TLabel').grid(row=1, column=1, sticky='w', pady=(8, 0))
         ttk.Label(head, text='Saved to', style='Muted.Surface.TLabel').grid(row=2, column=0, sticky='nw', pady=(2, 0), padx=(0, 12))
         self.target_label = ttk.Label(head, textvariable=self.detail_target, style='Surface.TLabel', wraplength=px(420))
         self.target_label.grid(row=2, column=1, sticky='w', pady=(2, 0))
 
-        bar = ttk.Frame(detail, style='Surface.TFrame', padding=(px(24), 0, px(24), px(8)))
+        bar = ttk.Frame(detail, style='Surface.TFrame', padding=(px(22), 0, px(22), px(6)))
         bar.grid(row=1, column=0, sticky='ew')
         self.tab_buttons = {}
         for name, label in (('transfer', 'Transfer'), ('log', 'Tool log')):
             button = ttk.Button(bar, text=label, command=lambda name=name: self.show_tab(name))
             button.pack(side='left', padx=(0, 4))
             self.tab_buttons[name] = button
-        self.copy_button = ttk.Button(bar, text='Copy path', style='Quiet.Surface.TButton', command=self.copy_path)
+        self.copy_button = ttk.Button(bar, text='Copy path', style='Surface.TButton', command=self.copy_path)
         self.copy_button.pack(side='right')
-        self.folder_button = ttk.Button(bar, text='Open folder', style='Quiet.Surface.TButton', command=self.open_folder)
-        self.folder_button.pack(side='right', padx=(0, 4))
+        self.folder_button = ttk.Button(bar, text='Open folder', style='Surface.TButton', command=self.open_folder)
+        self.folder_button.pack(side='right', padx=(0, 8))
 
         self.transfer_body = ScrollBody(detail, tone='Surface.', padding=0)
         self.detail_scroll = self.transfer_body
         self.transfer_body.grid(row=2, column=0, sticky='nsew')
         inner = self.transfer_body.inner
         inner.columnconfigure(0, weight=1)
-        inner.rowconfigure(0, weight=1)
+        inner.rowconfigure(1, weight=1)
         self.panel = TransferPanel(inner)
-        self.panel.grid(row=0, column=0, sticky='nsew')
+        self.panel.grid(row=1, column=0, sticky='nsew')
         self.message = ttk.Label(inner, style='Notice.TLabel', wraplength=px(480))
-        self.message_pad = (px(24), 0, px(24), px(20))
+        self.message_pad = (px(22), 0, px(22), px(18))
         self.transfer_body.canvas.bind('<Configure>', self.wrap_details, add='+')
 
-        self.log_body = ttk.Frame(detail, style='Surface.TFrame', padding=(px(24), 0, px(24), px(20)))
+        self.log_body = ttk.Frame(detail, style='Surface.TFrame', padding=(px(22), 0, px(22), px(18)))
         self.log_body.columnconfigure(0, weight=1)
         self.log_body.rowconfigure(1, weight=1)
         ttk.Label(self.log_body, text='Kept in memory for this session and never written to disk.',
@@ -271,7 +287,7 @@ class QueueView(ttk.Frame):
         self.log_text = tk.Text(self.log_body, wrap='word', height=4, width=20, state='disabled',
                                 font=self.theme.font('mono', 9) if self.theme else None)
         self.log_text.grid(row=1, column=0, sticky='nsew')
-        log_scroll = ttk.Scrollbar(self.log_body, command=self.log_text.yview)
+        log_scroll = ttk.Scrollbar(self.log_body, command=self.log_text.yview, style='Surface.Vertical.TScrollbar')
         log_scroll.grid(row=1, column=1, sticky='ns')
         self.log_text.configure(yscrollcommand=log_scroll.set)
 
@@ -279,16 +295,23 @@ class QueueView(ttk.Frame):
         self.empty = make_panel(body)
         box = ttk.Frame(self.empty, style='Surface.TFrame')
         box.place(relx=0.5, rely=0.45, anchor='center')
+        self.empty_art = ttk.Label(box, style='Surface.TLabel')
+        self.empty_art.pack(pady=(0, px(14)))
         self.empty_title = ttk.Label(box, text='No exports yet', style='Title.Surface.TLabel')
         self.empty_title.pack()
         self.empty_hint = ttk.Label(box, style='Muted.Surface.TLabel', wraplength=px(420), justify='center')
         self.empty_hint.pack(pady=(8, 20))
-        self.empty_action = ttk.Button(box, text='New export', style='Accent.TButton', command=new_download)
+        self.empty_action = ttk.Button(box, text='New export', style='Surface.Accent.TButton', command=new_download)
         self.empty_action.pack()
         self.empty_new, self.empty_settings = new_download, open_settings
         self.set_tool_ready(True)
         self.show_empty()
         self.show_tab('transfer')
+        if self.theme:
+            self.theme.register(self)
+
+    def apply_theme(self, colors):
+        self.empty_art.configure(image=self.theme.assets.get('empty'))
 
     # -- empty state -----------------------------------------------------
     def set_tool_ready(self, ready):
@@ -360,7 +383,7 @@ class QueueView(ttk.Frame):
     def show_tab(self, name):
         self.tab = name
         for key, button in self.tab_buttons.items():
-            button.configure(style='TabActive.TButton' if key == name else 'Tab.TButton')
+            button.configure(style='Surface.TabActive.TButton' if key == name else 'Surface.Tab.TButton')
         if name == 'log':
             self.transfer_body.grid_remove()
             self.log_body.grid(row=2, column=0, sticky='nsew')
@@ -390,8 +413,8 @@ class QueueView(ttk.Frame):
                        'failed': 'error', 'cancelled': 'error'}.get(view.state, view.state)
         panel.value, panel.speed, panel.written, panel.elapsed = view.percent, view.speed, view.written, view.elapsed
         panel.peak_speed, panel.history = view.peak, list(view.history)
-        # Full errors belong in the wrapping message below, so a long tool
-        # diagnostic cannot cover the stage track or the speed history.
+        # Full errors belong in the wrapping message above the panel, so a long
+        # tool diagnostic cannot cover the stage track or the speed history.
         panel.detail = {
             'done': 'Checksums verified.',
             'done_warning': 'The package is complete; the source VM needs a look.',
@@ -416,7 +439,7 @@ class QueueView(ttk.Frame):
         if self.message['text'] != message or str(self.message['style']) != style:
             self.message.configure(text=message, style=style)
             if message:
-                self.message.grid(row=1, column=0, sticky='ew', padx=self.message_pad[0], pady=(0, self.message_pad[3]))
+                self.message.grid(row=0, column=0, sticky='ew', padx=self.message_pad[0], pady=(self.theme.px(6) if self.theme else 6, 0))
             else:
                 self.message.grid_remove()
             # Changing a child's requested height does not always notify the

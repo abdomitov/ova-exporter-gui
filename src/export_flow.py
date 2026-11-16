@@ -46,13 +46,17 @@ class ExportFlow(ttk.Frame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(2, weight=1)
 
-        ttk.Label(self, text='New export', style='Title.TLabel').grid(row=0, column=0, sticky='w')
+        gutter = self.theme.card_margin[0]
+        ttk.Label(self, text='New export', style='Title.TLabel').grid(row=0, column=0, sticky='w', padx=gutter)
         stepper = ttk.Frame(self)
-        stepper.grid(row=1, column=0, sticky='ew', pady=(px(6), px(14)))
+        stepper.grid(row=1, column=0, sticky='ew', pady=(px(8), px(10)), padx=0)
         self.step_buttons = {}
         for number in (1, 2, 3):
-            button = ttk.Button(stepper, command=lambda n=number: self.show_step(n), style='Step.TButton', takefocus=0)
-            button.pack(side='left', padx=(0, px(28)))
+            if number > 1:
+                ttk.Label(stepper, text='›', style='Muted.TLabel').pack(side='left', padx=px(2))
+            button = ttk.Button(stepper, command=lambda n=number: self.show_step(n), style='Step.TButton',
+                                takefocus=0, compound='left')
+            button.pack(side='left')
             self.step_buttons[number] = button
 
         pages = ttk.Frame(self)
@@ -67,7 +71,7 @@ class ExportFlow(ttk.Frame):
         self.status_display = tk.StringVar()
         self.status.trace_add('write', self.status_changed)
         self.status_label = ttk.Label(self, textvariable=self.status_display, style='Muted.TLabel', wraplength=px(640))
-        self.status_label.grid(row=3, column=0, sticky='w', pady=(px(10), 0))
+        self.status_label.grid(row=3, column=0, sticky='w', pady=(px(2), 0), padx=gutter)
         self.bind('<Configure>', lambda event: self.status_label.configure(wraplength=max(px(240), event.width - px(20))), add='+')
 
         self.build_connect(self.pages[1])
@@ -95,8 +99,8 @@ class ExportFlow(ttk.Frame):
         self.suggested_username = None
 
         card = self.theme.panel(page)
-        card.grid(row=0, column=0, sticky='nsew', padx=(0, px(16)))
-        form = ttk.Frame(card, style='Surface.TFrame', padding=(px(24), px(20)))
+        card.grid(row=0, column=0, sticky='nsew', padx=(0, px(4)))
+        form = ttk.Frame(card, style='Surface.TFrame', padding=(px(22), px(16)))
         form.pack(fill='both', expand=True)
         form.columnconfigure(0, weight=1)
         ttk.Label(form, text='Sign in to an ESXi host or vCenter', style='Heading.Surface.TLabel').grid(row=0, column=0, columnspan=2, sticky='w')
@@ -104,13 +108,13 @@ class ExportFlow(ttk.Frame):
         for index, (label, variable) in enumerate((('Server address', self.address), ('Username', self.username),
                                                    ('Password', self.password))):
             ttk.Label(form, text=label, style='Surface.TLabel').grid(row=2 + index * 2, column=0, columnspan=2, sticky='w', pady=(10, 4))
-            entry = ttk.Entry(form, textvariable=variable, show='\u2022' if index == 2 else '')
+            entry = ttk.Entry(form, textvariable=variable, show='\u2022' if index == 2 else '', exportselection=False)
             entry.grid(row=3 + index * 2, column=0, columnspan=1 if index == 2 else 2, sticky='ew')
             entry.bind('<Control-a>', self.select_all)
             entry.bind('<Control-A>', self.select_all)
             self.login_entries.append(entry)
         self.address_entry, self.username_entry, self.password_entry = self.login_entries
-        self.show_password_btn = ttk.Button(form, text='Show', command=self.toggle_password, width=6)
+        self.show_password_btn = ttk.Button(form, text='Show', command=self.toggle_password, width=6, style='Surface.TButton')
         self.show_password_btn.grid(row=7, column=1, sticky='e', padx=(8, 0))
         for key in ('<Return>', '<KP_Enter>'):
             self.show_password_btn.bind(key, self.password_visibility_enter)
@@ -122,14 +126,14 @@ class ExportFlow(ttk.Frame):
         self.remember_check = ttk.Checkbutton(form, text='Remember this address and username',
                                               variable=self.remember_connection, style='Surface.Ova.TCheckbutton')
         self.remember_check.grid(row=8, column=0, columnspan=2, sticky='w', pady=(12, 0))
-        self.connect_btn = ttk.Button(form, text='Connect', style='Accent.TButton', command=self.connect)
+        self.connect_btn = ttk.Button(form, text='Connect', style='Surface.Accent.TButton', command=self.connect)
         self.connect_btn.grid(row=9, column=0, columnspan=2, sticky='w', pady=(14, 0))
         self.connect_btn.bind('<Return>', self.password_enter)
 
-        side = self.theme.panel(page, width=px(300))
+        side = self.theme.panel(page, width=px(320))
         side.grid(row=0, column=1, sticky='nsew')
         side.pack_propagate(False)
-        saved = ttk.Frame(side, style='Surface.TFrame', padding=(0, px(20), 0, px(16)))
+        saved = ttk.Frame(side, style='Surface.TFrame', padding=(0, px(16), 0, px(12)))
         saved.pack(fill='both', expand=True)
         saved.columnconfigure(0, weight=1)
         saved.rowconfigure(1, weight=1)
@@ -141,7 +145,7 @@ class ExportFlow(ttk.Frame):
         self.saved_rows.columnconfigure(0, weight=1)
         self.storage_label = ttk.Label(saved, textvariable=self.storage_notice, style='Small.Surface.TLabel', wraplength=px(240))
         self.storage_label.grid(row=2, column=0, sticky='ew', padx=px(20), pady=(8, 8))
-        self.clear_saved_btn = ttk.Button(saved, text='Clear saved data…', command=self.clear_saved_data)
+        self.clear_saved_btn = ttk.Button(saved, text='Clear saved data…', command=self.clear_saved_data, style='Surface.TButton')
         self.clear_saved_btn.grid(row=3, column=0, sticky='w', padx=px(20))
         saved.bind('<Configure>', lambda event: self.storage_label.configure(wraplength=max(px(160), event.width - px(44))), add='+')
         self.saved_buttons = []
@@ -153,7 +157,7 @@ class ExportFlow(ttk.Frame):
         page.columnconfigure(0, weight=1)
         page.rowconfigure(1, weight=1)
         toolbar = ttk.Frame(page)
-        toolbar.grid(row=0, column=0, sticky='ew', pady=(0, px(10)))
+        toolbar.grid(row=0, column=0, sticky='ew', pady=(0, px(6)), padx=self.theme.card_margin[0])
         toolbar.columnconfigure(1, weight=1)
         self.connection = tk.StringVar(value='Not connected')
         self.server_label = ttk.Label(toolbar, textvariable=self.connection, style='Heading.TLabel')
@@ -163,7 +167,8 @@ class ExportFlow(ttk.Frame):
         ttk.Label(toolbar, text='Search', style='Muted.TLabel').grid(row=1, column=0, sticky='w', padx=(0, 8))
         self.search = tk.StringVar()
         self.search.trace_add('write', self.schedule_filter)
-        self.search_entry = ttk.Entry(toolbar, textvariable=self.search, width=20)
+        self.search_entry = ttk.Entry(toolbar, textvariable=self.search, width=20, style='Page.TEntry',
+                                      exportselection=False)
         self.search_entry.grid(row=1, column=1, sticky='ew')
         self.power_off_only = tk.BooleanVar(value=True)
         ttk.Checkbutton(toolbar, text='Powered off only', variable=self.power_off_only,
@@ -185,7 +190,7 @@ class ExportFlow(ttk.Frame):
             self.tree.column(key, width=px(width), minwidth=px(50), stretch=key == 'name', anchor='w')
         self.label_headings()
         self.tree.grid(row=0, column=0, sticky='nsew')
-        scroll = ttk.Scrollbar(table, orient='vertical', command=self.tree.yview)
+        scroll = ttk.Scrollbar(table, orient='vertical', command=self.tree.yview, style='Surface.Vertical.TScrollbar')
         scroll.grid(row=0, column=1, sticky='ns')
         self.tree.configure(yscrollcommand=scroll.set)
         self.tree.bind('<<TreeviewSelect>>', lambda event: self.selection_changed())
@@ -197,7 +202,7 @@ class ExportFlow(ttk.Frame):
             wraplength=max(px(200), min(px(440), event.width - px(24)))), add='+')
 
         actions = ttk.Frame(page)
-        actions.grid(row=2, column=0, sticky='ew', pady=(px(10), 0))
+        actions.grid(row=2, column=0, sticky='ew', pady=(px(4), 0), padx=self.theme.card_margin[0])
         actions.columnconfigure(0, weight=1)
         self.detail = tk.StringVar(value='Choose a powered-off VM. Running VMs cannot be exported.')
         self.detail_label = ttk.Label(actions, textvariable=self.detail, style='Muted.TLabel', wraplength=px(520))
@@ -214,7 +219,7 @@ class ExportFlow(ttk.Frame):
         page.rowconfigure(2, weight=1)
         summary = self.theme.panel(page)
         summary.grid(row=0, column=0, sticky='ew')
-        box = ttk.Frame(summary, style='Surface.TFrame', padding=(px(24), px(18)))
+        box = ttk.Frame(summary, style='Surface.TFrame', padding=(px(22), px(16)))
         box.pack(fill='x')
         self.vm_name = tk.StringVar()
         self.vm_specs = tk.StringVar()
@@ -224,8 +229,8 @@ class ExportFlow(ttk.Frame):
         ttk.Label(box, textvariable=self.vm_path, style='Muted.Surface.TLabel').pack(anchor='w', pady=(2, 0))
 
         card = self.theme.panel(page)
-        card.grid(row=1, column=0, sticky='ew', pady=(px(16), 0))
-        destination = ttk.Frame(card, style='Surface.TFrame', padding=px(24))
+        card.grid(row=1, column=0, sticky='ew')
+        destination = ttk.Frame(card, style='Surface.TFrame', padding=(px(22), px(18)))
         destination.pack(fill='x')
         destination.columnconfigure(0, weight=1)
         self.folder = tk.StringVar(value=str(Path('D:/VMs') if Path('D:/VMs').is_dir() else Path.home() / 'Documents'))
@@ -233,7 +238,7 @@ class ExportFlow(ttk.Frame):
         ttk.Label(destination, text='Save folder', style='Surface.TLabel').grid(row=0, column=0, sticky='w', pady=(0, 5))
         self.folder_entry = ttk.Entry(destination, textvariable=self.folder)
         self.folder_entry.grid(row=1, column=0, sticky='ew')
-        self.browse_btn = ttk.Button(destination, text='Browse…', command=self.browse)
+        self.browse_btn = ttk.Button(destination, text='Browse…', command=self.browse, style='Surface.TButton')
         self.browse_btn.grid(row=1, column=1, sticky='e', padx=(8, 0))
         self.space = tk.StringVar()
         self.space_label = ttk.Label(destination, textvariable=self.space, style='Small.Surface.TLabel', wraplength=px(560))
@@ -248,14 +253,14 @@ class ExportFlow(ttk.Frame):
         self.filename_entry.bind('<Return>', self.export_enter)
 
         actions = ttk.Frame(page)
-        actions.grid(row=3, column=0, sticky='ew', pady=(px(10), 0))
+        actions.grid(row=3, column=0, sticky='ew', pady=(px(4), 0), padx=self.theme.card_margin[0])
         self.back_btn = ttk.Button(actions, text='Back', command=lambda: self.show_step(2))
         self.back_btn.pack(side='left')
         self.export_btn = ttk.Button(actions, text='Add to queue', style='Accent.TButton', command=self.export, state='disabled')
         self.export_btn.pack(side='right')
 
     def apply_theme(self, colors):
-        self.tree.tag_configure('unavailable', foreground=colors['muted'])
+        self.tree.tag_configure('unavailable', foreground=colors['disabled'])
 
     # -- navigation ------------------------------------------------------
     @property
@@ -305,13 +310,14 @@ class ExportFlow(ttk.Frame):
 
     def refresh_steps(self):
         for number, button in self.step_buttons.items():
-            title = f'{number}   {STEP_TITLES[number]}'
+            title = '  ' + STEP_TITLES[number]
             if number == 1 and self.client:
-                title = f'1   Connected to {self.client.authority}'
+                title = f'  Connected to {self.client.authority}'
             reachable = (number == 1 and not self.client) or (number == 2 and bool(self.client)) or \
                         (number == 3 and self.exportable())
             style = 'StepActive.TButton' if number == self.step else 'StepDone.TButton' if number < self.step else 'Step.TButton'
-            button.configure(text=title, style=style,
+            mark = 'active' if number == self.step else 'done' if number < self.step else 'todo'
+            button.configure(text=title, style=style, image=self.theme.assets.get(f'stage_{mark}_page'),
                              state='normal' if number == self.step or (reachable and not self.busy) else 'disabled')
 
     def focus_search(self, event=None):
@@ -358,7 +364,7 @@ class ExportFlow(ttk.Frame):
             widget.destroy()
         self.saved_buttons = []
         for index, row in enumerate(self.saved_profiles[:SAVED_ROWS]):
-            button = ttk.Button(self.saved_rows, text=row['address'] + '\n' + row['username'], style='Row.TButton',
+            button = ttk.Button(self.saved_rows, text=row['address'] + '\n' + row['username'], style='Surface.Row.TButton',
                                 command=lambda row=row: self.use_profile(row['address'], row['username']))
             button.grid(row=index, column=0, sticky='ew', padx=self.theme.px(8))
             self.saved_buttons.append(button)
