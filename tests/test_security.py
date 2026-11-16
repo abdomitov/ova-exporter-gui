@@ -32,17 +32,16 @@ class TrustSecurityTests(unittest.TestCase):
                     app = App(root, settings=settings, remember_theme=False, tool_store=False,
                               tool_locator=lambda *args: Path(__file__), update_checks=False)
                     app.new_download()
-                    wizard = app.wizard
-                    wizard.username.set('synthetic-user')
-                    wizard.password.set('synthetic-password')
-                    with patch('wizard.messagebox.askyesno', return_value=False) as ask, \
-                            patch('wizard.threading.Thread') as worker:
-                        wizard.authenticate('192.0.2.10', b'fixture-certificate')
+                    flow = app.flow
+                    flow.username.set('synthetic-user')
+                    flow.password.set('synthetic-password')
+                    with patch('export_flow.messagebox.askyesno', return_value=False) as ask, \
+                            patch('export_flow.threading.Thread') as worker:
+                        flow.authenticate('192.0.2.10', b'fixture-certificate')
                     self.assertEqual(ask.call_args.kwargs.get('default'), 'no')
                     settings.trust_certificate.assert_not_called()
                     worker.assert_not_called()
-                    self.assertEqual(wizard.password.get(), '')
-                    wizard.destroy_wizard()
+                    self.assertEqual(flow.password.get(), '')
                 finally:
                     close_root(root)
 

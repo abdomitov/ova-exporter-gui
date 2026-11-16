@@ -1,102 +1,135 @@
+<div align="center">
+
+<img src="assets/logo.svg" width="96" height="96" alt="OVA Exporter GUI logo: a cube with an export arrow">
+
 # OVA Exporter GUI
 
-<img src="assets/logo.svg" width="96" height="96" alt="OVA Exporter GUI cube and export arrow logo">
+**Export VMware virtual machines to OVA from a calm, single-window Windows app.**<br>
+A graphical front end for VMware OVF Tool, with checksum verification built in.
 
-**A Windows GUI for VMware OVF Tool.** Browse powered-off virtual machines on ESXi or vCenter and export OVA packages with manifest checksum verification without writing shell commands.
+[![Windows tests](https://github.com/abdomitov/ova-exporter-gui/actions/workflows/offline-tests.yml/badge.svg)](https://github.com/abdomitov/ova-exporter-gui/actions/workflows/offline-tests.yml)
+[![Latest release](https://img.shields.io/github/v/release/abdomitov/ova-exporter-gui?include_prereleases&label=release)](https://github.com/abdomitov/ova-exporter-gui/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3257f5.svg)](LICENSE)
+![Platform: Windows 10/11 x64](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-141b2e)
+
+**[Download the installer](https://github.com/abdomitov/ova-exporter-gui/releases/latest)** ·
+[Install guide](#install) · [Try it without VMware](#try-it-without-vmware) · [Docs](docs/ARCHITECTURE.md)
+
+<br>
+
+<img src="docs/images/exports-light.png" alt="Exports view: task list, stage track and transfer speed graph" width="920">
+
+</div>
+
+<br>
 
 Independent community project. Not affiliated with or endorsed by Broadcom or VMware.
+Provided as is under the MIT license; see [responsibility and third-party terms](#license-responsibility-and-third-party-terms).
 
-Provided as is under the MIT license. See [responsibility and third-party terms](#license-responsibility-and-third-party-terms).
+## Why this exists
 
-**[Download the Windows x64 installer](https://github.com/abdomitov/ova-exporter-gui/releases/download/v2.3.5/OVA-Exporter-GUI-2.3.5-Windows-x64-Setup.exe)**
+OVF Tool is reliable and has a long command line. This app keeps that engine and removes the typing:
+sign in to an ESXi host or vCenter, pick a powered-off VM, choose where to save it, and watch the
+export move through its stages. Several VMs can be queued in a row.
 
-[Release notes and SHA-256 checksums](https://github.com/abdomitov/ova-exporter-gui/releases/tag/v2.3.5)
+## What you get
 
-This is a preview release for Windows 10/11 x64. Python/Tk are included in the
-installer; VMware OVF Tool is a separate requirement. The installer is unsigned,
-and live VMware validation remains a release check. Fresh installation and upgrade
-are checked on disposable GitHub-hosted Windows runners.
-macOS and Linux downloads are not available yet.
-
-## Features
-
-- Compact export dashboard; select a task to see its full progress and speed history.
-- Light and dark themes, resizable windows, keyboard navigation and mouse-wheel scrolling.
-- Startup OVF Tool detection, red missing-tool alert, and a custom-location picker.
-- Background app update checks, Update / Remind me later / Skip this version choices,
-  and verified installer downloads. Installation waits for exports to finish.
-- ESXi and vCenter connections with a fresh password for each new setup session.
-- Powered-off VM filter, search, destination selection and filename validation.
-- Up to three concurrent exports across server addresses; one active export per address.
-- Approximate time remaining, output-file write rate, elapsed time and peak speed.
-- Manifest checksum verification before an `.incomplete` package becomes the final `.ova`.
-- Optional remembered addresses/usernames and trusted certificate fingerprints, protected with Windows current-user DPAPI. The app does not write passwords to its settings files.
-
-This release supports exporting to a local OVA. It does not implement VM deployment, live migration, snapshot backups or resumable transfers.
-
-## Screenshots
-
-Captured from the **2.3.5 UI** using the guarded fake-data preview. VM names,
-addresses and progress are illustrative; no real infrastructure or credentials
-appear in these images.
-
-![Dark dashboard showing OVA export progress and transfer speed history](docs/images/dashboard-dark.jpg)
+| | |
+| --- | --- |
+| **Four-stage progress** | Preflight, Transfer, Verify and Server check are drawn as one track, so you always know what is happening and what comes next. |
+| **Live transfer panel** | Large percentage, speed, bytes written, elapsed time, peak speed and a graph of speed across the transfer. |
+| **A queue you can trust** | Up to three exports at once across servers, one per server address. Each task keeps its own log, progress and state. |
+| **Verified packages** | The manifest is checked before an `.incomplete` file becomes the final `.ova`. Existing files are never overwritten. |
+| **Three-step New export** | Connect, choose a VM (search, sort, powered-off filter), then save. The session stays open for the next VM. |
+| **Light and dark themes** | Drawn rounded surfaces, icons and focus rings, with keyboard shortcuts throughout. |
+| **Careful with secrets** | Passwords are typed for each connection and never stored. Saved servers and certificate approvals use Windows DPAPI. |
+| **Updates you approve** | The app can tell you about a new installer, verify its checksum and install it when no export is running. |
 
 <details>
-<summary>Light theme, compact layout, connection and VM selection</summary>
+<summary><b>More screens</b>: dark theme, the three steps, Settings and the missing-tool state</summary>
 
-![Missing OVF Tool status with custom-location and detection controls](docs/images/tool-missing.jpg)
+<br>
 
-![Light dashboard](docs/images/dashboard-light.jpg)
+![Exports view in the dark theme](docs/images/exports-dark.png)
 
-![Compact dashboard at 640 by 420 pixels](docs/images/dashboard-compact.jpg)
+![Step 1: sign in, with a masked password and saved servers](docs/images/connect.png)
 
-![Connection form with a masked-by-default password input](docs/images/new-export-dark.jpg)
+![Step 2: searchable, sortable list of powered-off VMs](docs/images/choose-vm.png)
 
-![Powered-off VM filter, selected example VM and OVA destination](docs/images/vm-selection-dark.jpg)
+![Step 3: VM summary, save folder with free space, and OVA filename](docs/images/save-as.png)
+
+![Settings: OVF Tool location, appearance, app updates and saved data](docs/images/settings.png)
+
+![Empty Exports view when OVF Tool has not been found](docs/images/tool-missing.png)
+
+![Exports view at the 1080 by 660 minimum window size](docs/images/exports-minimum.png)
 
 </details>
 
+Screenshots are captured from the guarded fake-data preview on Linux; fonts differ slightly on Windows
+(Bahnschrift and Segoe UI). VM names, addresses and progress are illustrative.
+
+## Install
+
+1. Open the [latest release](https://github.com/abdomitov/ova-exporter-gui/releases/latest) and download
+   `OVA-Exporter-GUI-<version>-Windows-x64-Setup.exe`.
+2. Run it. Installation is per user and needs no administrator rights by default. Python and Tk are included.
+3. If Windows shows **Windows protected your PC**, see [the note below](#the-windows-protected-your-pc-screen).
+4. Install [VMware OVF Tool](https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/)
+   separately. The app finds a standard installation automatically, or you can point to it in **Settings**.
+
+Each release lists a SHA-256 checksum next to the installer. To check it in PowerShell:
+
+```powershell
+Get-FileHash .\OVA-Exporter-GUI-*-Windows-x64-Setup.exe -Algorithm SHA256
+```
+
+### The "Windows protected your PC" screen
+
+The installer is not yet signed with a code-signing certificate, so Windows SmartScreen shows a blue
+warning for files it has not seen often. It does not mean the file was found to be harmful. To continue,
+click **More info**, then **Run anyway**, after comparing the SHA-256 above with the release page.
+
+There is no setting in this repository that can turn the warning off, and no trustworthy workaround:
+SmartScreen trusts a file only through a valid signature plus download history. The plan to remove it
+is in [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md). Until then, organizations can deploy the installer
+through their own software distribution, where an administrator allows the file.
+
+## Try it without VMware
+
+To explore the interface with no VMware server, OVF Tool or network, download the source, install
+Python 3.10 or newer, and double-click **Try the new UI.cmd**. It opens the app against a simulated
+server: connect, pick a VM, queue it, watch it run and cancel it. Nothing is sent anywhere and no
+files are written.
+
+```powershell
+py -3 tools/preview_ui.py --try
+```
+
+## Keyboard shortcuts
+
+| Keys | Action |
+| --- | --- |
+| **Ctrl+N** | New export |
+| **Ctrl+1 / 2 / 3** | Exports, New export, Settings |
+| **Ctrl+F** | Jump to VM search |
+| **F5** | Refresh the VM list |
+| **Up / Down** | Move through the task list |
+
 ## App updates
 
-Version 2.3.0 adds an **Updates** menu. By default, the app checks this public
-GitHub repository once at startup for a newer Windows installer, including
-published preview releases. Turn off **Check automatically at startup** to stop
-automatic requests. **Check for updates…** also works manually and can show a
-version you previously skipped.
+By default the app checks this public repository once at startup for a newer Windows installer. Turn off
+**Check automatically at startup** in **Settings** to stop that, or use **Check for updates** to look on
+demand. The prompt offers **Update**, **Remind me later** (one day) and **Skip this version**.
 
-The prompt offers **Update**, **Remind me later** (one day), and **Skip this
-version**. Update downloads the installer and checks its size and SHA-256 against
-the published checksum and GitHub asset digest when present. From an installed
-copy of version 2.3.2 or later, choosing **Update** authorizes downloading and
-installing the update, then reopening the app. Setup shows installation progress
-without repeating the first-install pages. The existing folder and shortcut
-choices are retained. Error dialogs and Windows security prompts can still appear;
-the updater does not force a Windows restart or close other app instances.
+Update downloads the installer and checks its size and SHA-256 against the published checksum, then
+installs and reopens the app. Installation is blocked while exports are queued, transferring, verifying
+or awaiting cleanup. The check sends no VMware credentials, server addresses or usernames; GitHub sees
+the normal request, including your public IP address. A checksum is an integrity check, not a publisher
+signature. VMware OVF Tool is updated separately by you.
 
-Installation is blocked while tasks are queued, transferring, verifying or awaiting
-cancellation/cleanup, or a New export window is open. If tasks start during the
-download, installation is deferred; choose **Install now** after they finish.
-Source/portable copies without an installed uninstaller keep the regular setup UI.
-Versions 2.3.0/2.3.1 still open that regular wizard once when installing this
-improvement; later updates started from 2.3.2 use the streamlined flow.
-
-The update check sends no VMware credentials, server addresses or usernames.
-GitHub receives the normal network request, including your public IP address.
-An offline/failed automatic check does not interrupt exports. Update choices are
-saved in `updates.json`; downloaded installers stay in the `updates/` subfolder
-under the app's local data directory. A checksum is an integrity check, not a
-publisher signature: installers remain unsigned. A downloaded installer is checked
-again before launch. VMware OVF Tool is updated separately by the user.
-
-**Users on 2.2.0 and earlier should install the current release manually once** to
-receive this functionality; no intermediate version is required. Checks currently inspect the 30 most recent published GitHub
-releases and offer only releases with a complete Windows installer/checksum pair.
-
-**Maintainers:** no separate update server is required. A source push alone does
-not announce an update. Publish a higher-version GitHub Release with the Windows
-installer and matching checksum file. See [Publishing updates](docs/RELEASING.md)
-for the build, release and installed-app validation steps.
+**Maintainers:** no update server is needed. Publish a higher-version GitHub Release with the installer and
+its checksum file. See [Publishing updates](docs/RELEASING.md).
 
 ## Requirements
 
@@ -108,9 +141,11 @@ for the build, release and installed-app validation steps.
 
 ## Run
 
-**Windows users:** use the Windows x64 Setup executable from the project's
-Releases when available. It includes Python/Tk and creates application shortcuts.
-VMware OVF Tool is installed separately. See [installer details](docs/WINDOWS_INSTALLER.md).
+**Windows users:** download the Setup executable from the
+[latest release](https://github.com/abdomitov/ova-exporter-gui/releases/latest). It includes
+Python/Tk and creates application shortcuts. VMware OVF Tool is installed separately.
+See [installer details](docs/WINDOWS_INSTALLER.md) and the
+[SmartScreen note](#the-windows-protected-your-pc-screen).
 
 **Developers/source users:**
 
@@ -147,19 +182,17 @@ py -3 launch.pyw
 
 ## Export a VM
 
-1. Click **New export** or press **Ctrl+N**.
-2. Enter an ESXi or vCenter address, username and password. Press **Enter** in the password field to connect. The eye toggles password visibility.
+1. Click **New export** in the left rail or press **Ctrl+N**.
+2. **Connect**: enter an ESXi or vCenter address, username and password, or click a saved server to fill the first two. Press **Enter** in the password field to connect. **Show** toggles password visibility.
 3. Verify the certificate fingerprint before accepting it. The app remembers that exact certificate; a changed fingerprint requires review again.
-4. Choose a powered-off VM, folder and `.ova` filename, then add the task. Existing destination files are preserved.
-5. Select its dashboard row for progress details. Add another export to work with another server.
+4. **Choose a VM**: search, sort by any column, select a powered-off VM and click **Continue** (or double-click the row).
+5. **Save as**: choose the folder and `.ova` filename, then **Add to queue**. Existing destination files are preserved.
+6. The app switches to **Exports** and selects the new task. You stay signed in, so you can return to **New export** for another VM from the same server; click **Disconnect** when finished.
 
-The connection and selection sections keep their `+`/`−` headers. **F5** refreshes inventory; **Escape** closes an idle setup window. Shift+wheel scrolls tables horizontally. Drag the dashboard divider to resize its detail pane.
-
-Use the top-right theme button to switch light/dark appearance. Short windows
-hide the large summary cards to keep more room for the task table; the counts
-and throughput remain available in the status line. Narrow windows prioritize
-the server, VM, progress, status and speed columns; wider windows also show dates
-and destination. Scroll the selected task's detail pane to see its full graph.
+Shortcuts: **Ctrl+1/2/3** switch views, **Ctrl+F** jumps to VM search, **F5** refreshes the VM list,
+**Up/Down** move through the task list. The selected task has **Transfer** and **Tool log** tabs,
+plus **Open folder** and **Copy path**. Change the theme from the rail or in **Settings**.
+The minimum window size is 1080 × 660.
 
 Server aliases and a vCenter plus its ESXi host can refer to the same physical resources. The per-address queue cannot identify all such overlaps. Concurrent exports still share your PC's NIC, storage and any common network links.
 
@@ -211,7 +244,11 @@ An isolated visual preview is available without credentials or VMware binaries:
 py -3 tools/preview_ui.py
 ```
 
-It injects in-memory settings, fake VM inventory and progress, and blocks socket connections and subprocess creation. It cannot export a VM or save connection settings.
+To click through the whole interface yourself (connect, choose a VM, queue, cancel) against a
+simulated server, run `py -3 tools/preview_ui.py --try` or double-click **Try the new UI.cmd**.
+Nothing is sent to a network and no files are written.
+
+The default preview injects in-memory settings, fake VM inventory and progress, and blocks socket connections and subprocess creation. It cannot export a VM or save connection settings.
 
 The repository keeps application code in `src/`, regression tests in `tests/`,
 build helpers in `tools/`, installer configuration in `packaging/`, and user/developer

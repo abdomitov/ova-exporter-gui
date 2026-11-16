@@ -1,6 +1,6 @@
 # Windows installer
 
-End users download `OVA-Exporter-GUI-2.3.5-Windows-x64-Setup.exe`, run it,
+End users download `OVA-Exporter-GUI-2.4.0-Windows-x64-Setup.exe`, run it,
 accept the app license and choose the install folder. Python and Tk are included.
 Installation is per Windows user and does not need administrator rights by default.
 Start menu and optional Desktop shortcuts use the project icon. Uninstall keeps
@@ -22,7 +22,7 @@ configurations remain unverified; this is not certification. Code signing
 remains a future release task.
 
 Version 2.3.0 includes update notifications and user-confirmed installer downloads.
-Use the Updates menu for a manual check or to disable automatic startup checks.
+Use Settings → App updates for a manual check or to disable automatic startup checks.
 Users can defer the prompt for a day or skip that version. Installation is blocked
 until queued/active tasks finish and export setup windows are closed. Downloads
 are restricted to the project's GitHub release assets over HTTPS, with size and

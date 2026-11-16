@@ -43,17 +43,8 @@ class UpdateUI:
         self.release = self.ready = self.dialog = None
         self.install_after_download = False
         self.automatic = tk.BooleanVar(value=self.preferences.automatic)
-        self.menu = tk.Menu(self.root, tearoff=False)
-        self.menu.add_command(label='Check for updates…', command=lambda: self.check(manual=True),
-                              state='normal' if self.enabled else 'disabled')
-        self.menu.add_checkbutton(label='Check automatically at startup', variable=self.automatic,
-                                  command=self.toggle_automatic,
-                                  state='normal' if self.enabled else 'disabled')
-        self.menu.add_separator()
-        self.menu.add_command(label='Install downloaded update…', command=self.install, state='disabled')
-        self.button = ttk.Menubutton(app.header_actions,text='Updates',menu=self.menu,style='Quiet.TMenubutton')
-        self.button.pack(side='left')
-        self.app.theme.refresh_windows()
+        # The Settings view owns the update controls and redraws them through this hook.
+        self.on_change = lambda: None
         if self.enabled and self.preferences.due():
             self.root.after(2500, self.check)
 
@@ -81,7 +72,7 @@ class UpdateUI:
         if self.checking or (not manual and not self.preferences.due()):
             return
         self.checking = True
-        self.menu.entryconfigure(0, state='disabled')
+        self.on_change()
         if manual:
             self.app.caption.set('Checking GitHub for a newer OVA Exporter GUI release…')
         def worker():
@@ -95,7 +86,7 @@ class UpdateUI:
     def handle(self, kind, payload):
         if kind == 'checked':
             self.checking = False
-            self.menu.entryconfigure(0, state='normal')
+            self.on_change()
             manual, release, error = payload
             if error:
                 if manual:
@@ -114,13 +105,14 @@ class UpdateUI:
             self.app.caption.set(f'Downloading app update · {done / total:.0%} · Export tasks continue normally.')
         elif kind == 'downloaded':
             self.downloading = False
+            self.on_change()
             path, digest, error = payload
             if error:
                 self.app.caption.set('Update download failed. Your installed version is unchanged.')
                 messagebox.showerror('Update not downloaded', error, parent=self.root)
                 return
             self.ready = path, digest
-            self.menu.entryconfigure(3, state='normal')
+            self.on_change()
             if self.install_after_download and not self.blocked():
                 self.install(confirmed=True)
             else:
@@ -135,7 +127,7 @@ class UpdateUI:
         window.transient(self.root)
         window.minsize(460, 1)
         window.resizable(True, False)
-        frame = ttk.Frame(window, padding=20)
+        frame = ttk.Frame(window, padding=28)
         frame.pack(fill='both', expand=True)
         # Non-modal: an update notification never steals a credential dialog's grab.
         window.bind('<Escape>', lambda event: window.destroy())
@@ -153,7 +145,7 @@ class UpdateUI:
     def show_offer(self):
         release = self.release
         window, frame = self.window('OVA Exporter GUI update available')
-        ttk.Label(frame, text=f'Version {release.version} is available', style='Heading.TLabel').pack(anchor='w')
+        ttk.Label(frame, text=f'Version {release.version} is available', style='Title.TLabel').pack(anchor='w')
         ttk.Label(frame, text=f'Installed: {VERSION}' + (' · New release: Windows preview' if release.preview else ''),
                   style='Muted.TLabel').pack(anchor='w', pady=(6, 10))
         ttk.Label(frame, text=('Update downloads and verifies the installer, applies the upgrade '
@@ -189,6 +181,7 @@ class UpdateUI:
         if window is not None:
             window.destroy()
         self.downloading = True
+        self.on_change()
         self.install_after_download = installed_app_directory() is not None
         release = self.release
         self.app.caption.set('Downloading the app update. Export tasks continue normally…')
@@ -200,20 +193,20 @@ class UpdateUI:
             except Exception:
                 self.app.emit('update', ('downloaded', (None, None,
                               'The installer could not be downloaded and verified. Nothing was installed. '
-                              'Check network access and free disk space, then use Updates → Check for updates to retry.')))
+                              'Check network access and free disk space, then use Settings → Check for updates to retry.')))
         threading.Thread(target=worker, daemon=True, name='update-download').start()
 
     def blocked(self):
         return bool(self.app.manager.unfinished() or self.app.close_mode
-                    or (self.app.wizard and not self.app.wizard.closed))
+                    or self.app.flow.active)
 
     def show_ready(self):
         busy = self.blocked()
-        self.app.caption.set('App update downloaded and verified. Use Updates → Install downloaded update when exports finish.')
+        self.app.caption.set('App update downloaded and verified. Install it from Settings when exports finish.')
         window, frame = self.window('App update ready')
-        ttk.Label(frame, text=f'Version {self.release.version} is ready', style='Heading.TLabel').pack(anchor='w')
-        ttk.Label(frame, text=('Finish all export tasks and close the New export window before installing. '
-                  'Then choose Updates → Install downloaded update.' if busy else
+        ttk.Label(frame, text=f'Version {self.release.version} is ready', style='Title.TLabel').pack(anchor='w')
+        ttk.Label(frame, text=('Finish all export tasks and disconnect from the server in New export before installing. '
+                  'Then choose Install downloaded update in Settings.' if busy else
                   ('Install now updates the app with a progress window and reopens it. '
                    if installed_app_directory() else
                    'Install now closes this app and opens the Windows setup wizard. ') +
@@ -231,7 +224,7 @@ class UpdateUI:
         if not self.ready or self.launching:
             return
         if self.blocked():
-            messagebox.showinfo('Finish exports first', 'Finish all queued and active export tasks and close the New export window before installing. No task was stopped.', parent=self.root)
+            messagebox.showinfo('Finish exports first', 'Finish all queued and active export tasks and disconnect from the server in New export before installing. No task was stopped.', parent=self.root)
             return
         if not confirmed and not messagebox.askyesno('Install app update?',
                 'Close OVA Exporter GUI and install the downloaded update? '

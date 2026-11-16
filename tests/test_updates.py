@@ -174,6 +174,7 @@ class UpdateUITests(unittest.TestCase):
         self.addCleanup(lambda: close_root(self.root))
         settings = Mock()
         settings.migrate_legacy.return_value = []
+        settings.profiles.return_value = []
         self.app = App(self.root, settings=settings, tool_store=False,
                        tool_locator=lambda *args: Path(__file__), update_checks=False)
         self.ui = self.app.updater
@@ -244,6 +245,33 @@ class UpdateUITests(unittest.TestCase):
             self.ui.check(manual=True)
             self.app.poll()
         self.ui.client.check.assert_called_once_with(VERSION, '')
+
+    def test_install_waits_for_new_export_session_to_disconnect(self):
+        self.app.flow.client = SimpleNamespace(authority='192.0.2.10', logout=Mock())
+        with patch('update_ui.subprocess.Popen') as launch, patch('update_ui.messagebox.showinfo') as notice:
+            self.ui.install()
+            launch.assert_not_called()
+            self.assertIn('disconnect', notice.call_args.args[1])
+        self.app.flow.client = None
+
+    def test_settings_controls_follow_update_state(self):
+        view = self.app.settings_view
+        view.refresh_updates()
+        self.assertEqual(str(view.install_button['state']), 'normal')
+        self.assertIn('downloaded and verified', view.update_status.get())
+        with patch.object(self.ui, 'check') as check:
+            view.check_button.invoke()
+            check.assert_called_once_with(manual=True)
+        self.ui.ready = None
+        self.ui.checking = True
+        self.ui.on_change()
+        self.assertEqual(str(view.check_button['state']), 'disabled')
+        self.assertEqual(str(view.install_button['state']), 'disabled')
+        self.ui.checking = False
+        self.ui.enabled = False
+        self.ui.on_change()
+        self.assertEqual(str(view.check_button['state']), 'disabled')
+        self.assertEqual(str(view.automatic_check['state']), 'disabled')
 
     def test_offline_startup_does_not_interrupt_exports_or_show_popup(self):
         with patch('update_ui.messagebox.showwarning') as warning:

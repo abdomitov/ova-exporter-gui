@@ -33,12 +33,17 @@ Captured with the Windows computer-use tool from `tools/preview_ui.py`:
 
 | File | Preview argument |
 | --- | --- |
-| `images/dashboard-dark.jpg` | Default |
-| `images/dashboard-light.jpg` | `--light` |
-| `images/dashboard-compact.jpg` | `--compact` |
-| `images/new-export-dark.jpg` | `--wizard-connect` |
-| `images/vm-selection-dark.jpg` | `--wizard-selection`; selected the illustrative Atlas Maps row |
-| `images/tool-missing.jpg` | `--missing-tool` |
+| `images/exports-light.png` | Default |
+| `images/exports-dark.png` | `--dark` |
+| `images/exports-minimum.png` | `--size 1080x660` |
+| `images/connect.png` | `--connect` |
+| `images/choose-vm.png` | `--inventory` |
+| `images/save-as.png` | `--destination` |
+| `images/settings.png` | `--settings` |
+| `images/tool-missing.png` | `--missing-tool` |
+
+The workbench UI images above were captured on Linux under Xvfb with
+`--skip-check`, replacing the earlier Windows captures of the 2.3.5 layout.
 
 The preview blocks sockets, external processes, persistent settings and VMware
 API construction. The forms are illustrative UI states, not authenticated server

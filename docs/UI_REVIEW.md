@@ -1,3 +1,23 @@
+# Workbench UI rewrite
+
+The 2.3.5 interface (stacked dashboard plus a separate accordion wizard window)
+was replaced by a single-window workbench: a navigation rail with Exports, New
+export and Settings views. The export core (`jobs.py`, `exporter.py`,
+`vsphere.py`, storage and update logic) is unchanged. Behaviour changes:
+
+- The browsing session stays open after a VM is queued, until Disconnect or exit.
+- The tool log is a tab on the selected task instead of a separate window.
+- OVF Tool, appearance and update controls moved to Settings.
+- New: sortable VM columns, saved-server shortcuts, free-space display,
+  Open folder and Copy path. The minimum window is 1080 x 660 (was 640 x 420).
+- The default theme is light; a saved preference is still honoured.
+
+The rewrite was checked with the offline suite and the fake-data preview on
+Linux (Tk 8.6 and Tk 9). It has not yet been run on Windows or against a real
+server; treat the review notes below as history for the previous layout.
+
+---
+
 # UI and responsiveness review — 2.3.3 candidate
 
 ## Direction

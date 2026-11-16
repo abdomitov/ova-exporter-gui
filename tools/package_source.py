@@ -9,15 +9,15 @@ sys.path.insert(0, str(ROOT/"src"))
 from metadata import VERSION  # noqa: E402 - standalone script bootstraps src above
 
 ROOT_FILES = (
-    'launch.pyw', 'Start OVA Exporter.cmd', 'Start OVA Exporter.vbs',
+    'launch.pyw', 'Try the new UI.cmd', 'START HERE.txt', 'Start OVA Exporter.cmd', 'Start OVA Exporter.vbs',
     'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'CONTRIBUTING.md',
     'SECURITY.md', '.gitignore', '.gitattributes', 'pyproject.toml', 'requirements-build.txt',
 )
 APP_FILES = tuple('src/'+name for name in (
-    'accordion.py','app.py','branding.py','connection_settings.py','dashboard.py',
-    'diagnostics.py','exporter.py','jobs.py','metadata.py','output_paths.py',
-    'project_paths.py','secure_storage.py','task_view.py','theme.py','tool_paths.py',
-    'transfer_ui.py','ui_assets.py','vsphere.py','wizard.py','updates.py','update_ui.py',
+    'app.py','branding.py','connection_settings.py','diagnostics.py','export_flow.py',
+    'exporter.py','jobs.py','metadata.py','output_paths.py','project_paths.py','queue_view.py',
+    'scrolling.py','secure_storage.py','settings_view.py','task_view.py','theme.py','tool_paths.py',
+    'transfer_panel.py','ui_assets.py','vsphere.py','updates.py','update_ui.py',
 ))
 TEST_FILES = tuple('tests/'+name for name in (
     'test_app.py','test_cancellation.py','test_connection_settings.py','test_jobs.py','test_ui.py','test_ui_performance.py','test_qa_regressions.py','test_updates.py','test_release_pipeline.py','test_security.py',
@@ -32,9 +32,9 @@ EXTRA_FILES = APP_FILES+TEST_FILES+(
     'assets/logo.svg','assets/logo.png','assets/app.ico',
     'packaging/windows.iss','packaging/installer-notes.txt','packaging/tool-requirement.txt',
 )
-OPTIONAL_IMAGES = ('docs/images/dashboard-dark.jpg', 'docs/images/dashboard-light.jpg',
-                   'docs/images/dashboard-compact.jpg', 'docs/images/new-export-dark.jpg',
-                   'docs/images/vm-selection-dark.jpg','docs/images/tool-missing.jpg')
+OPTIONAL_IMAGES = tuple('docs/images/'+name+'.png' for name in (
+    'exports-light', 'exports-dark', 'exports-minimum', 'connect', 'choose-vm', 'save-as',
+    'settings', 'tool-missing'))
 
 
 def build():

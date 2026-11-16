@@ -1,0 +1,10 @@
+OVA Exporter GUI - new interface
+
+1. Unzip this folder first (do not run things from inside the zip).
+2. Install Python 3.10+ from https://www.python.org/downloads/ (tick "Add python.exe to PATH").
+3. Double-click  "Try the new UI.cmd"
+     -> the new window opens with a simulated server. Click Connect, choose a VM,
+        Add to queue, watch it run, Cancel it, switch Light/Dark in Settings.
+        Nothing is sent anywhere and no files are written.
+4. To use the real app with VMware OVF Tool: double-click  "Start OVA Exporter.cmd"
+   (or "Start OVA Exporter.vbs" for no console window).

@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from dashboard import TaskView
+from task_view import TaskView
 from jobs import Cancelled, ExportJob, JobManager
 from vsphere import VSphere
 
