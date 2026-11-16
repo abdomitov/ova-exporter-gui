@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT/"src"))
 from metadata import VERSION  # noqa: E402 - standalone script bootstraps src above
 
 ROOT_FILES = (
-    'launch.pyw', 'Start OVA Exporter.cmd', 'Start OVA Exporter.vbs',
+    'launch.pyw', 'Try the new UI.cmd', 'START HERE.txt', 'Start OVA Exporter.cmd', 'Start OVA Exporter.vbs',
     'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'CONTRIBUTING.md',
     'SECURITY.md', '.gitignore', '.gitattributes', 'pyproject.toml', 'requirements-build.txt',
 )

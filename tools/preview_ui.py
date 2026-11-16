@@ -7,6 +7,7 @@ Views:   --connect  --inventory  --no-results  --destination  --settings
 States:  --empty  --missing-tool  --error-state  --completed  --queued  --verifying  --log  --exit-dialog
          --update-available  --update-ready  --animate
 Look:    --dark  --light  --size 1080x660
+Try:     --try   (hands-on: connect to a simulated server, queue exports, watch them run)
 """
 import math
 import socket
@@ -65,6 +66,9 @@ class DemoClient:
     def __init__(self, address):
         self.authority = address
 
+    def fork(self):
+        return DemoClient(self.authority)
+
     def logout(self):
         pass
 
@@ -86,21 +90,29 @@ class PreviewApp(application.App):
         super().__init__(root, settings=MemorySettings(), remember_theme=False,
                          tool_store=False, tool_locator=lambda base, selected=None: Path(sys.executable),
                          update_checks=False)
-        root.title('OVA Exporter GUI — FAKE DATA PREVIEW')
-        self.manager.start = blocked
+        self.hands_on = '--try' in sys.argv
+        root.title('OVA Exporter GUI — ' + ('TRY IT: simulated server' if self.hands_on else 'FAKE DATA PREVIEW'))
+        self.manager.start = self.demo_start if self.hands_on else blocked
         self.manager.export = blocked
+        if self.hands_on:
+            self.cancel_job = self.demo_cancel
         self.settings_view.tool_download.configure(command=self.preview_notice)
         self.settings_view.tool_browse.configure(command=self.preview_notice)
-        self.queue.folder_button.configure(command=self.preview_notice)
         flow = self.flow
-        flow.folder.set('D:/Exports')
+        if self.hands_on:
+            downloads = Path.home() / 'Downloads'
+            flow.folder.set(str(downloads if downloads.is_dir() else Path.home()))
+        else:
+            self.queue.folder_button.configure(command=self.preview_notice)
+            flow.folder.set('D:/Exports')
         flow.connect = self.connect_fake
         flow.connect_btn.configure(command=self.connect_fake)
-        flow.export = self.preview_notice
-        flow.export_btn.configure(command=self.preview_notice)
-        flow.browse = self.preview_notice
-        flow.browse_btn.configure(command=self.preview_notice)
-        flow.update_space = lambda: flow.space.set('412.6 GB free in this folder\'s drive.')
+        if not self.hands_on:
+            flow.export = self.preview_notice
+            flow.export_btn.configure(command=self.preview_notice)
+            flow.browse = self.preview_notice
+            flow.browse_btn.configure(command=self.preview_notice)
+            flow.update_space = lambda: flow.space.set('412.6 GB free in this folder\'s drive.')
         self.jobs = []
         for index, (name, host, phase, percent) in enumerate([
             ('Atlas Maps', '192.0.2.10', 'running', 46),
@@ -124,12 +136,65 @@ class PreviewApp(application.App):
             job.log_lines.extend(['Fake-data preview. No real export has been started.',
                                   f'VM: {name}', f'Source: {host}', 'Export preflight: illustrative only'])
         self.queue.select(self.jobs[0].id)
-        self.caption.set('FAKE DATA PREVIEW. Network access and OVF Tool execution are blocked.')
-        if '--skip-check' in sys.argv:
+        self.caption.set('TRY IT: a simulated server. Nothing is sent or saved; no files are written.'
+                         if self.hands_on else 'FAKE DATA PREVIEW. Network access and OVF Tool execution are blocked.')
+        if self.hands_on:
+            root.geometry(self.size())
+            root.after(200, self.begin_demo)
+        elif '--skip-check' in sys.argv:
             root.geometry(self.size())
             root.after(200, self.apply_flags)
         else:
             root.after(500, self.self_check)
+
+    def begin_demo(self):
+        if '--dark' in sys.argv:
+            self.theme.set_mode('dark')
+        self.animate_demo()
+
+    def demo_start(self, job):
+        job.log_lines.extend(['Simulated export. Nothing is sent to a server and no file is written.',
+                              f"VM: {job.vm['name']}", f'Source: {job.client.authority}'])
+
+    def demo_cancel(self, job_id):
+        job = self.manager.jobs[job_id]
+        if job.state in ('done', 'failed', 'cancelled'):
+            return
+        if messagebox.askyesno('Cancel this export?', job.vm['name'] + '\n\nStop this simulated export?',
+                               parent=self.root, default=messagebox.NO):
+            job.state = 'cancelled'
+            self.queue.handle(job_id, 'cancelled', 'Export cancelled. Any partial package remains marked .incomplete.')
+            self.refresh_tool()
+
+    def animate_demo(self):
+        """Advance simulated exports; one runs at a time per server, like the real queue."""
+        busy = {job.endpoint for job in self.manager.jobs.values() if job.state in ('running', 'verifying')}
+        for job in list(self.manager.jobs.values()):
+            view = self.queue.cards.get(job.id)
+            if view is None:
+                continue
+            if job.state == 'queued' and job.endpoint not in busy and job.id in self.queue.cards:
+                busy.add(job.endpoint)
+                job.state = 'running'
+                self.queue.handle(job.id, 'running', None)
+            elif job.state == 'running':
+                percent = min(100, view.percent + 0.35)
+                speed = (32 + 12 * math.sin(percent / 2)) * 1_000_000
+                self.emit('job', (job.id, 'progress', percent))
+                self.emit('job', (job.id, 'sample', dict(speed=speed, bytes=int(percent * 240_000_000),
+                                                        elapsed=view.elapsed + 0.125)))
+                if percent >= 100:
+                    job.state = 'verifying'
+                    job.ticks = 0
+                    self.emit('job', (job.id, 'verifying', None))
+            elif job.state == 'verifying':
+                job.ticks = getattr(job, 'ticks', 0) + 1
+                if job.ticks == 1:
+                    self.emit('job', (job.id, 'status', 'Verifying 3 files…'))
+                if job.ticks >= 24:
+                    job.state = 'done'
+                    self.emit('job', (job.id, 'done', '3 file checksums verified. Simulated package; no file was created.'))
+        self.root.after(125, self.animate_demo)
 
     def connect_fake(self):
         self.flow.emit('connected', (DemoClient('192.0.2.10'), [dict(vm) for vm in INVENTORY]))
