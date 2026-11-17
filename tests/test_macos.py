@@ -3,9 +3,11 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import platform_support
+import ssl
+import updates
 from secure_storage import MacKeychainProtection, WindowsDataProtection, default_protector
 from tool_paths import find_ovftool
 from updates import REPOSITORY, select_release
@@ -95,6 +97,48 @@ class MacPlatformTests(unittest.TestCase):
         self.assertEqual(release.filename, 'OVA-Exporter-GUI-8.0.0-macOS-Intel.dmg')
         with patch.object(sys, 'platform', 'win32'):
             self.assertEqual(select_release([windows_only, both], '1.0.0').version, '9.0.0')
+
+
+class TrustedContextTests(unittest.TestCase):
+    def context(self, loaded=0):
+        context = Mock()
+        context.cert_store_stats.return_value = {'x509_ca': loaded}
+        return context
+
+    def test_windows_and_working_defaults_are_left_alone(self):
+        for platform, loaded in (('win32', 0), ('darwin', 140)):
+            context = self.context(loaded)
+            with patch.object(sys, 'platform', platform), patch('updates.ssl.create_default_context', return_value=context):
+                self.assertIs(updates.trusted_context(), context)
+            context.load_verify_locations.assert_not_called()
+
+    def test_mac_bundle_without_roots_uses_the_system_bundle_and_keeps_verifying(self):
+        context = self.context()
+        with mac(), patch('updates.ssl.create_default_context', return_value=context), \
+                patch('updates.subprocess.run') as run:
+            self.assertIs(updates.trusted_context(), context)
+        context.load_verify_locations.assert_called_once_with(cafile='/etc/ssl/cert.pem')
+        run.assert_not_called()
+
+    def test_mac_falls_back_to_the_system_root_keychain(self):
+        context = self.context()
+        context.load_verify_locations.side_effect = [OSError('missing'), OSError('missing'), None]
+        pem = '-----BEGIN CERTIFICATE-----\nfixture\n-----END CERTIFICATE-----\n'
+        with mac(), patch('updates.ssl.create_default_context', return_value=context), \
+                patch('updates.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout=pem)) as run:
+            updates.trusted_context()
+        self.assertEqual(run.call_args.args[0][:3], ['/usr/bin/security', 'find-certificate', '-a'])
+        context.load_verify_locations.assert_called_with(cadata=pem)
+
+    def test_update_client_uses_the_trusted_context(self):
+        context = ssl.create_default_context()
+        with patch('updates.trusted_context', return_value=context):
+            client = updates.UpdateClient()
+        handlers = [handler for handler in client.opener.handlers if type(handler).__name__ == 'HTTPSHandler']
+        self.assertEqual(len(handlers), 1)
+        self.assertIs(handlers[0]._context, context)
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
 
 
 class KeychainProtectionTests(unittest.TestCase):

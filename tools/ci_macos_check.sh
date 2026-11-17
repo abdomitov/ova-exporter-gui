@@ -14,7 +14,8 @@ mkdir -p "$REPORTS"
 passed() { "$PY" - "$1" <<'PY'
 import json, sys
 report = json.load(open(sys.argv[1]))
-sys.exit(0 if report.get('fake_ui_check') == 'passed' else 1)
+# The update check needs real root certificates inside the app bundle (see updates.trusted_context).
+sys.exit(0 if report.get('fake_ui_check') == 'passed' and report.get('tls_trust_roots', 0) > 50 else 1)
 PY
 }
 
@@ -35,7 +36,9 @@ APP="$DEST/$NAME.app"
 codesign --verify --deep --strict "$APP"
 lipo -archs "$APP/Contents/MacOS/$NAME" | grep -qw x86_64
 [ "$(plutil -extract CFBundleShortVersionString raw "$APP/Contents/Info.plist")" = "$VERSION" ]
-"$APP/Contents/MacOS/$NAME" --self-test-report "$REPORTS/macos-installed.json"
+# Hide the build machine's Python certificate folder, as on a user's Mac without python.org Python.
+SSL_CERT_FILE=/nonexistent SSL_CERT_DIR=/nonexistent \
+    "$APP/Contents/MacOS/$NAME" --self-test-report "$REPORTS/macos-installed.json"
 passed "$REPORTS/macos-installed.json"
 
 cat > "$REPORTS/macos-dmg-check.json" <<JSON

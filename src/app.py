@@ -4,6 +4,7 @@ import time
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+from tkinter import font as tkfont
 
 from branding import set_icon
 from connection_settings import ConnectionSettings
@@ -67,15 +68,23 @@ class App:
         root.columnconfigure(1, weight=1)
         root.rowconfigure(0, weight=1)
 
-        # Navigation rail.
-        rail = self.theme.panel(root, tone='rail', width=px(232))
+        # Navigation rail. It widens when the system font is wider than Segoe UI (SF on macOS),
+        # so the product name is never cut off.
+        logo = getattr(root, '_ova_logo', None)
+        self.brand_icon = logo.subsample(max(1, logo.width() // px(34))) if logo else None
+        try:
+            text_width = max(tkfont.Font(root=root, font=self.theme.font('display', 14, 'bold')).measure('OVA Exporter'),
+                             tkfont.Font(root=root, font=self.theme.font('body', 9)).measure('for VMware OVF Tool'))
+        except (tk.TclError, AttributeError):
+            text_width = 0
+        icon_width = self.brand_icon.width() + px(12) if self.brand_icon else 0
+        self.rail_width = max(px(232), px(20) + icon_width + text_width + px(18) + px(6))
+        rail = self.theme.panel(root, tone='rail', width=self.rail_width)
         self.rail = rail
         rail.grid(row=0, column=0, sticky='ns')
         rail.pack_propagate(False)
         brand = ttk.Frame(rail, style='Rail.TFrame', padding=(px(20), px(24), px(18), px(22)))
         brand.pack(fill='x')
-        logo = getattr(root, '_ova_logo', None)
-        self.brand_icon = logo.subsample(max(1, logo.width() // px(34))) if logo else None
         if self.brand_icon:
             ttk.Label(brand, image=self.brand_icon, style='Rail.TLabel').pack(side='left', padx=(0, px(12)))
         names = ttk.Frame(brand, style='Rail.TFrame')

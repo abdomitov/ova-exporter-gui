@@ -8,10 +8,13 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import ssl
+import subprocess
+import sys
 import tempfile
 import time
 from urllib.parse import urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
 
 from platform_support import installer_filename
 
@@ -102,9 +105,36 @@ class GitHubRedirect(HTTPRedirectHandler):
         return super().redirect_request(request, fp, code, message, headers, new_url)
 
 
+MAC_CA_BUNDLES = ('/etc/ssl/cert.pem', '/private/etc/ssl/cert.pem')
+MAC_ROOT_KEYCHAIN = '/System/Library/Keychains/SystemRootCertificates.keychain'
+
+
+def trusted_context():
+    """A verifying TLS context with real root certificates on every platform.
+
+    Python on Windows reads the Windows store. A macOS app bundle built from the python.org
+    framework looks for certificates in a framework folder that does not exist on the user's
+    Mac, so it would trust nothing; use the root certificates macOS itself ships instead.
+    """
+    context = ssl.create_default_context()
+    if sys.platform != 'darwin' or context.cert_store_stats()['x509_ca']:
+        return context
+    for path in MAC_CA_BUNDLES:
+        try:
+            context.load_verify_locations(cafile=path)
+            return context
+        except (OSError, ssl.SSLError):
+            continue
+    exported = subprocess.run(['/usr/bin/security', 'find-certificate', '-a', '-p', MAC_ROOT_KEYCHAIN],  # nosec B603
+                              capture_output=True, text=True, timeout=20, check=False)
+    if exported.returncode == 0 and 'BEGIN CERTIFICATE' in exported.stdout:
+        context.load_verify_locations(cadata=exported.stdout)
+    return context  # Still verifying: with no roots, connections fail rather than go unchecked.
+
+
 class UpdateClient:
     def __init__(self, opener=None):
-        self.opener = opener or build_opener(GitHubRedirect())
+        self.opener = opener or build_opener(HTTPSHandler(context=trusted_context()), GitHubRedirect())
 
     def open(self, url, *, api=False):
         safe_url(url, api=api)

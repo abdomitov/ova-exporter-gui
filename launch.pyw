@@ -10,7 +10,12 @@ try:
         sys.argv.append('--check')
         from tools.preview_ui import main
         status=main()
-        report.write_text(json.dumps({'fake_ui_check':'passed' if status==0 else 'failed',
+        try:
+            from updates import trusted_context
+            roots=trusted_context().cert_store_stats()['x509_ca']
+        except Exception:
+            roots=-1
+        report.write_text(json.dumps({'fake_ui_check':'passed' if status==0 else 'failed','tls_trust_roots':roots,
                                      'network':'blocked','subprocesses':'blocked','settings':'in-memory'}))
         raise SystemExit(status)
     else:
