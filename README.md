@@ -128,8 +128,9 @@ or awaiting cleanup. The check sends no VMware credentials, server addresses or 
 the normal request, including your public IP address. A checksum is an integrity check, not a publisher
 signature. VMware OVF Tool is updated separately by you.
 
-**Maintainers:** no update server is needed. Publish a higher-version GitHub Release with the installer and
-its checksum file. See [Publishing updates](docs/RELEASING.md).
+**Maintainers:** releasing is automatic. Raise the version with `python tools/bump_version.py X.Y.Z`, merge
+to `main`, and the CI/CD workflow tests, builds, verifies and publishes the release. See
+[Publishing updates](docs/RELEASING.md).
 
 ## Requirements
 

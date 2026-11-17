@@ -37,8 +37,8 @@ version available to installed updaters, including published preview releases.
 | 2. CI | Jobs, runners, matrices, failures and logs | Windows tests on Python 3.10/3.14 and a build-dependency audit. |
 | 3. Build | Toolchains, packaging and artifacts | Frozen Python/Tk app, pinned Inno compiler, installer and source ZIP. |
 | 4. Test environments | Test isolation and test scope | Fake VMware tests locally; real install/upgrade/reopen/uninstall only on a disposable GitHub-hosted runner. |
-| 5. Delivery | Versions, hashes, build identity and release candidates | A manifest ties candidate files to a commit and workflow run. Drafts stay invisible to the updater. |
-| 6. Deployment | Approval, exact artifacts and user impact | The publish workflow requires an explicit tag/commit/confirmation and rechecks the files. |
+| 5. Delivery | Versions, hashes, build identity and release candidates | A manifest ties the release files to a commit and workflow run, and publishing re-checks it. |
+| 6. Deployment | Approval, exact artifacts and user impact | Merging a higher version to `main` is the approval; the pipeline publishes only after every check passes. |
 | 7. Operations | Failure reports, recovery and communication | Review sanitized reports, withdraw a bad release and ship a higher-version fix. |
 | 8. Supply-chain improvements | Signing, provenance, SBOMs and dependency locks | Add verified publisher signing and stronger provenance after the base pipeline works. These are not implemented by the initial pipeline. |
 | 9. Lab infrastructure | IaC, configuration and integration testing | Later use Terraform/Ansible for a separately authorized disposable vSphere lab, documented with the homelab project. |
@@ -55,55 +55,39 @@ versions, fake UI, source packaging and known vulnerabilities in Python build
 requirements. Pull-request jobs have read-only repository permissions and do not
 receive a release/signing secret. Actions are pinned to full commit IDs.
 
-### Build Windows release candidate
+### CI/CD (`release.yml`)
 
-Run this manually on `main`. The default `create_draft=false` builds and uploads
-artifacts only. It does not publish anything or notify installed app users.
+Runs on every push to `main`. A push that keeps the same `VERSION` only runs the tests. Raising the
+version (with `python tools/bump_version.py X.Y.Z`) also builds, verifies and publishes a release.
 
 ```powershell
-gh workflow run release-build.yml --ref main -f create_draft=false
-gh run list --workflow release-build.yml
+gh run list --workflow release.yml
 gh run view RUN_ID --log-failed
 gh run download RUN_ID -n windows-release-RUN_ID
 ```
 
-Replace `RUN_ID` with the actual numeric run ID. The workflow:
+Replace `RUN_ID` with the actual numeric run ID. The jobs:
 
-1. Runs guarded tests and fake-data UI checks.
-2. Installs the pinned Python build tools and audits the resolved Windows environment.
-3. Downloads a fixed Inno Setup version, verifies its pinned SHA-256 and publisher signature, and provisions it on the disposable runner.
-4. Builds the app, runtime license texts and Windows installer.
-5. Runs the frozen app with its fake-only self-test.
-6. Installs the candidate into a fresh CI directory, checks installed startup and uninstalls it. Separately installs the pinned public 2.3.1 baseline, runs the actual candidate update, verifies parent-exit waiting, the replaced app and reopening, then uninstalls it. No VMware credentials or servers are used. The script refuses local or self-hosted runners.
-7. Verifies the exact source/archive files, checksums and check reports; writes `build-manifest.json` with the commit, workflow run and runtime versions.
-8. Keeps the small release files and diagnostic reports as artifacts for seven days.
+1. **plan**: compares `VERSION` with existing tags; a lower version fails, an existing one skips release.
+2. **validate**: guarded tests and the fake-data UI check on Python 3.10 and 3.14.
+3. **build** (new versions only): audits the pinned build tools, provisions a verified Inno Setup, builds the
+   app, license texts and installer, runs the frozen self-test, installs into a fresh directory, checks startup
+   and uninstalls, then installs the pinned public 2.3.1 baseline and runs the real update, checking parent-exit
+   waiting, the replaced app and reopening. It writes `build-manifest.json` with the commit, run and runtime
+   versions. No VMware credentials or servers are used, and local or self-hosted runners are refused.
+4. **publish**: the only job with `contents: write`. It checks the manifest against this exact commit and run,
+   re-verifies the files and source archive, confirms `main` and the tag state, and creates the public release.
+   If a newer commit has landed on `main`, it publishes nothing and lets that commit's own run decide.
 
-To prepare a draft for a **new app version**, first bump/review/merge that version,
-then run the same workflow with `create_draft=true`. The draft job uses a temporary
-GitHub token with release-write permission; build/test jobs remain read-only.
-An already published version fails draft creation instead of replacing its files.
-
-### Publish reviewed release
-
-This workflow is a deliberate deployment action. Review the draft changes and
-its exact candidate before running it. Select the tag and 40-character commit
-and set `confirm_publish=true`. It checks:
-
-- The selected commit is still current `main` and matches the draft and manifest.
-- The exact files match their SHA-256 sidecars and recorded build hashes.
-- The source ZIP matches the reviewed checkout and source allowlist.
-- Frozen/installer checks passed and the referenced build run succeeded.
-
-Only then does it change the draft to a public release. It never moves a tag or
-replaces an existing asset. The human confirmation is a solo-maintainer gate,
-not an independent second-person review or a configured protected environment.
-Do not run it just to experiment: publishing is visible to app updaters.
+Pull requests and feature branches run only **Windows offline tests** with read-only permissions, so
+a pull request can never publish. Bad code is stopped by required checks on `main` (repository
+setting) and a failed run, not by a click after the fact.
 
 ## Downsides and practical limits
 
 | Tradeoff | What can go wrong | How to handle it |
 | --- | --- | --- |
-| More automation | A bad workflow can distribute a bad installer quickly. | Draft first, exact-version checks and a separate explicit publish step. |
+| More automation | A bad workflow can distribute a bad installer quickly. | Required pull-request checks on `main`, exact-version and manifest checks, and one job holding write access. |
 | Green tests have limits | Fake VMware tests do not prove real export/cancellation behavior. | Keep an authorized disposable integration lab as a separate future gate. |
 | Installer test scope | A hosted Windows runner is not every Windows 10/11 machine, GPO, antivirus or custom environment. | Record the environment; add representative VMs before broader support claims. |
 | External services | GitHub, PyPI, advisory databases and runtime-license endpoints can be unavailable. | Fail visibly, keep logs and retry after understanding the failure. No security-check bypass. |
@@ -126,6 +110,5 @@ setting is enabled by these workflow files.
 1. Open the pull request for the pipeline and inspect **Files changed**.
 2. Open **Checks** and one successful job; identify the runner, Python version and commands.
 3. Inspect a failed run if one occurred. Locate the first failing step and distinguish a code bug from an unavailable dependency or OS execution block.
-4. Run the build workflow with `create_draft=false` and inspect its manifest/reports.
-5. Stop there until you are ready to prepare a real new-version draft. Publishing
-   an update is a separate decision, not a required part of the first exercise.
+4. Open the latest **CI/CD** run on `main`. Find the **plan** job's summary and read why it did or did not release.
+5. Download the `build-reports` artifact of a release run and inspect its manifest and check reports.

@@ -24,3 +24,7 @@ Before requesting review, run syntax checks, inspect both themes, and check a
 640x420 main window plus a 600x420 setup window. Confirm keyboard navigation and
 mouse-wheel scrolling. Changes to certificate pinning, stored settings, process
 termination and cancellation need careful review and meaningful offline tests.
+
+Releases are automatic: a pull request that raises the version (`python tools/bump_version.py X.Y.Z`)
+publishes a new installer once it is merged to `main` and every check passes. Pull requests that keep
+the same version only run the tests.
