@@ -5,6 +5,7 @@ import shutil
 import re
 import ssl
 import sys
+import sysconfig
 import tkinter
 import urllib.request
 import urllib.error
@@ -35,10 +36,20 @@ def runtime_versions():
         root.destroy()
 
 
+def python_license():
+    """Windows keeps LICENSE.txt in the prefix; the macOS framework keeps it beside the standard library."""
+    candidates = (Path(sys.base_prefix) / "LICENSE.txt",
+                  Path(sysconfig.get_paths()["stdlib"]) / "LICENSE.txt")
+    for path in candidates:
+        if path.is_file():
+            return path
+    raise FileNotFoundError("Python's LICENSE.txt was not found in " + ", ".join(map(str, candidates)))
+
+
 def collect(destination):
     target = Path(destination)
     target.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(Path(sys.base_prefix) / "LICENSE.txt", target / "PYTHON.txt")
+    shutil.copyfile(python_license(), target / "PYTHON.txt")
     tcl_version, tk_version = runtime_versions()
     openssl_version = ssl.OPENSSL_VERSION.split()[1]
     urls = license_urls(tcl_version, tk_version, openssl_version)

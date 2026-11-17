@@ -14,6 +14,23 @@ from updates import (GitHubRedirect, REPOSITORY, RELEASES_URL, UpdateClient,
                      UpdatePreferences, safe_url, select_release, verify_installer, version_tuple)
 
 
+WINDOWS_UPDATER = []
+
+
+def setUpModule():
+    """These tests cover the Windows installer updater. On macOS the app links to the release page instead."""
+    for target, value in (('updates.installer_filename', lambda version: f'OVA-Exporter-GUI-{version}-Windows-x64-Setup.exe'),
+                          ('update_ui.is_mac', lambda: False), ('update_ui.platform_label', lambda: 'Windows')):
+        patcher = patch(target, value)
+        patcher.start()
+        WINDOWS_UPDATER.append(patcher)
+
+
+def tearDownModule():
+    while WINDOWS_UPDATER:
+        WINDOWS_UPDATER.pop().stop()
+
+
 INSTALLER = b'fake installer fixture; never execute'
 DIGEST = hashlib.sha256(INSTALLER).hexdigest()
 

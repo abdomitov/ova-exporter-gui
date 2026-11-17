@@ -1,7 +1,7 @@
 """Decide whether a push is a new version, and publish it only after every build check passed.
 
-Actions: ``plan`` (is this a new version?), ``verify-build`` (check the built files and write the
-manifest) and ``publish`` (create the public release from those exact files). This tool never
+Actions: ``plan`` (is this a new version?), ``verify-build`` and ``verify-macos`` (check the built
+files and write their manifests) and ``publish`` (create the public release from those exact files). This tool never
 replaces assets, moves a tag or overwrites an existing release.
 """
 import argparse
@@ -38,14 +38,21 @@ def expected_files(version):
     return (installer, installer + '.sha256', source, source + '.sha256')
 
 
-def verify_files(directory, version):
+def macos_files(version):
+    if not re.fullmatch(r'\d{1,5}\.\d{1,5}\.\d{1,5}', version):
+        raise ValueError('Release versions must contain three numeric components.')
+    image = f'OVA-Exporter-GUI-{version}-macOS-Intel.dmg'
+    return (image, image + '.sha256')
+
+
+def verify_files(directory, version, names=None):
     directory = Path(directory)
-    names = expected_files(version)
+    names = names or expected_files(version)
     for name in names:
         path = directory / name
         if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size < 300 * 1024**2:
             raise ValueError('Missing or invalid release file: ' + name)
-    for name in (names[0], names[2]):
+    for name in names[::2]:
         expected = sha256(directory / name) + '  ' + name
         if (directory / (name + '.sha256')).read_text(encoding='ascii').strip() != expected:
             raise ValueError('Checksum sidecar mismatch: ' + name)
@@ -107,6 +114,31 @@ def verify_build():
     print('PASS: exact release files, source allowlist and required build reports verified.')
 
 
+def verify_macos():
+    """Check the macOS disk image and its CI reports; write ``macos-manifest.json``."""
+    directory = ROOT / 'dist'
+    files = verify_files(directory, VERSION, macos_files(VERSION))
+    frozen = json.loads((ROOT / 'artifacts/ci/macos-frozen.json').read_text())
+    image = json.loads((ROOT / 'artifacts/ci/macos-dmg-check.json').read_text())
+    if frozen.get('fake_ui_check') != 'passed' or image.get('version') != VERSION:
+        raise ValueError('Required macOS check reports are absent or mismatched.')
+    for check in MACOS_CHECKS:
+        if image.get(check) != 'passed':
+            raise ValueError('macOS disk image check did not pass: ' + check)
+    commit = os.environ.get('GITHUB_SHA', '')
+    if not re.fullmatch('[0-9a-f]{40}', commit):
+        raise ValueError('Missing exact GitHub build commit.')
+    manifest = dict(schema=1, platform='macos-x86_64', version=VERSION, commit=commit,
+                    repository=os.environ['GITHUB_REPOSITORY'], run_id=os.environ['GITHUB_RUN_ID'],
+                    python=sys.version.split()[0], signing='ad-hoc, not notarized', files=files,
+                    checks=dict(frozen='passed', disk_image=image))
+    (directory / 'macos-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    print('PASS: macOS disk image, checksum and required reports verified.')
+
+
+MACOS_CHECKS = ('mounted', 'layout', 'signature', 'architecture', 'bundle_version', 'installed_self_test')
+
+
 def parse_version(text):
     match = re.fullmatch(r'v?(\d{1,5})\.(\d{1,5})\.(\d{1,5})', text or '')
     return tuple(int(part) for part in match.groups()) if match else None
@@ -156,6 +188,10 @@ def plan():
                 stream.write(f'\n### Release plan\n\n{reason}\n')
 
 
+def release_assets(version):
+    return (*expected_files(version), *macos_files(version), 'build-manifest.json', 'macos-manifest.json')
+
+
 class Superseded(Exception):
     """Not an error: another run or a newer commit owns this release."""
 
@@ -199,6 +235,15 @@ def publish(directory):
     if manifest.get('files') != verify_files(directory, VERSION):
         raise ValueError('Downloaded files differ from the build manifest.')
     verify_source(directory / f'ova-exporter-gui-{VERSION}-source.zip', VERSION)
+    mac = json.loads((directory / 'macos-manifest.json').read_text())
+    if (mac.get('version') != VERSION or mac.get('commit') != commit
+            or mac.get('repository') != repository or str(mac.get('run_id')) != os.environ.get('GITHUB_RUN_ID')):
+        raise ValueError('The macOS manifest does not belong to this commit and workflow run.')
+    if mac.get('files') != verify_files(directory, VERSION, macos_files(VERSION)):
+        raise ValueError('Downloaded macOS files differ from their manifest.')
+    if mac.get('checks', {}).get('frozen') != 'passed' or any(
+            mac.get('checks', {}).get('disk_image', {}).get(name) != 'passed' for name in MACOS_CHECKS):
+        raise ValueError('Required macOS build evidence is missing or did not pass.')
     checks = manifest.get('checks', {})
     native = checks.get('installer', {})
     if checks.get('frozen') != 'passed' or checks.get('source') != 'passed' or any(
@@ -216,24 +261,25 @@ def publish(directory):
     notes.write_text(release_notes(repository, tag, commit, previous, manifest), encoding='utf-8')
     subprocess.run(['gh', 'release', 'create', tag, '--repo', repository, '--target', commit,
                     '--title', f'v{VERSION}', '--notes-file', str(notes),
-                    *(str(directory / name) for name in expected_files(VERSION)),
-                    str(directory / 'build-manifest.json')], check=True)  # Never --clobber.
+                    *(str(directory / name) for name in release_assets(VERSION))], check=True)  # Never --clobber.
     row = gh_json(f'repos/{repository}/releases/tags/{tag}')
     names = {asset['name'] for asset in row.get('assets', [])}
-    if row.get('draft') or names != {*expected_files(VERSION), 'build-manifest.json'}:
+    if row.get('draft') or names != set(release_assets(VERSION)):
         raise ValueError('The published release does not contain exactly the expected files.')
     print(f'Published {tag}: {row.get("html_url", "")}')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('plan', 'verify-build', 'publish'))
+    parser.add_argument('action', choices=('plan', 'verify-build', 'verify-macos', 'publish'))
     parser.add_argument('--directory', type=Path, default=ROOT / 'dist')
     options = parser.parse_args()
     if options.action == 'plan':
         plan()
     elif options.action == 'verify-build':
         verify_build()
+    elif options.action == 'verify-macos':
+        verify_macos()
     else:
         try:
             publish(options.directory)

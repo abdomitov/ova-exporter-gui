@@ -7,16 +7,16 @@ import tempfile
 from pathlib import Path
 
 from vsphere import endpoint
-from secure_storage import WindowsDataProtection
+from platform_support import settings_directory
+from secure_storage import default_protector
 
 
 class ConnectionSettings:
     def __init__(self, directory=None, protector=None):
-        local = Path(os.environ.get('LOCALAPPDATA') or Path.home() / 'AppData' / 'Local')
-        self.directory = Path(directory) if directory is not None else local / 'OVA Exporter'
+        self.directory = Path(directory) if directory is not None else settings_directory()
         self.profiles_path = self.directory / 'connections.json'
         self.trust_path = self.directory / 'trusted_servers.json'
-        self.protector = protector if protector is not None else WindowsDataProtection()
+        self.protector = protector if protector is not None else default_protector()
 
     @staticmethod
     def address(value):

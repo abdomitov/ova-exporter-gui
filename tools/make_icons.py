@@ -1,16 +1,16 @@
-"""Render the project's own geometric brand into PNG/Windows ICO assets."""
+"""Render the project's own geometric brand into PNG/Windows ICO assets (and a macOS icon source)."""
 
 from pathlib import Path
+import sys
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def build():
-    scale = 4
+def render(scale=4):
     image = Image.new("RGBA", (128 * scale, 128 * scale), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((0, 0, 512, 512), radius=112, fill="#087f8c")
+    draw.rounded_rectangle((0, 0, 128 * scale, 128 * scale), radius=28 * scale, fill="#087f8c")
 
     def line(points, color="#ffffff", width=6):
         points = [(x * scale, y * scale) for x, y in points]
@@ -23,6 +23,20 @@ def build():
     line([(99, 41), (99, 68)])
     line([(82, 88), (110, 88), (99, 77)], "#a0f0cd", 7)
     line([(110, 88), (99, 99)], "#a0f0cd", 7)
+    return image
+
+
+def mac_icon(path):
+    """A 1024 px PNG with the margin macOS icons use; build_macos.sh turns it into .icns."""
+    canvas = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+    canvas.paste(render(8).resize((824, 824), Image.Resampling.LANCZOS), (100, 100))
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(path)
+    print("Created", path)
+
+
+def build():
+    image = render()
     target = ROOT / "assets"
     image.resize((128, 128), Image.Resampling.LANCZOS).save(target / "logo.png")
     image.save(
@@ -34,4 +48,7 @@ def build():
 
 
 if __name__ == "__main__":
-    build()
+    if sys.argv[1:2] == ["--mac-png"]:
+        mac_icon(sys.argv[2])
+    else:
+        build()

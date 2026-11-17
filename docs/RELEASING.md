@@ -18,10 +18,14 @@ Merge the pull request. The **CI/CD** workflow (`.github/workflows/release.yml`)
 2. **Tests** on Python 3.10 and 3.14, plus the fake-data UI check.
 3. **Build** (new versions only): dependency audit, app, installer and runtime licenses, the frozen
    app self-test, and a real install, upgrade, reopen and uninstall on a fresh Windows runner.
+   A separate **macOS** job (`.github/workflows/macos.yml`) builds the Intel `.app` and `.dmg` on a
+   GitHub-hosted Intel Mac, runs the frozen self-test, mounts the disk image, copies the app out
+   and launches it again. The same workflow runs on pull requests, so a Mac `.dmg` is available
+   as a run artifact before merging.
 4. **Publish**: it re-verifies the exact files against the build manifest (same commit, same run,
    every check passed, source archive allowlisted), confirms `main` has not moved and the tag does
    not exist, then creates the public release `vX.Y.Z` with the installer, source ZIP, checksums,
-   manifest and generated notes. It never replaces files or moves a tag.
+   manifest, the macOS disk image and its manifest, and generated notes. It never replaces files or moves a tag.
 
 If any step fails, nothing is published. Fix it, push again, and the next run retries. To retry
 without a new commit, use **Actions, CI/CD, Run workflow** on `main`.

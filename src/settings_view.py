@@ -3,6 +3,7 @@ import tkinter as tk
 import webbrowser
 from tkinter import ttk
 
+from platform_support import is_mac, tool_name
 from metadata import APP_NAME, VERSION
 from scrolling import ScrollBody
 from updates import REPOSITORY
@@ -48,7 +49,7 @@ class SettingsView(ttk.Frame):
         note(tool, style='Mono.Surface.TLabel', textvariable=self.tool_location)
         row = ttk.Frame(tool, style='Surface.TFrame')
         row.pack(anchor='w', pady=(px(12), 0))
-        self.tool_browse = ttk.Button(row, text='Locate ovftool.exe…', command=owner.choose_tool, style='Surface.TButton')
+        self.tool_browse = ttk.Button(row, text=f'Locate {tool_name()}…', command=owner.choose_tool, style='Surface.TButton')
         self.tool_browse.pack(side='left')
         self.tool_auto = ttk.Button(row, text='Auto-detect', command=owner.auto_tool, style='Surface.TButton')
         self.tool_auto.pack(side='left', padx=8)
@@ -85,8 +86,10 @@ class SettingsView(ttk.Frame):
 
         # Saved data
         saved = section('Saved connection data')
-        note(saved, text='Remembered addresses, usernames and approved certificates are encrypted for your Windows '
-                         'account on this PC. Passwords and session tickets are never saved.')
+        account = ('macOS user account, with the key in your login Keychain' if is_mac()
+                   else 'Windows account on this PC')
+        note(saved, text=f'Remembered addresses, usernames and approved certificates are encrypted for your {account}. '
+                         'Passwords and session tickets are never saved.')
         self.clear_button = ttk.Button(saved, text='Clear saved data…', command=owner.flow.clear_saved_data, style='Surface.TButton')
         self.clear_button.pack(anchor='w', pady=(px(12), 0))
 
@@ -112,7 +115,7 @@ class SettingsView(ttk.Frame):
 
     def refresh_tool(self, ready, path, busy):
         self.tool_label.configure(style='Success.Surface.TLabel' if ready else 'Error.Surface.TLabel')
-        self.tool_location.set(str(path) if ready and path else 'No ovftool.exe found in the usual locations.')
+        self.tool_location.set(str(path) if ready and path else f'No {tool_name()} found in the usual locations.')
         state = 'disabled' if busy else 'normal'
         for button in (self.tool_browse, self.tool_auto):
             button.configure(state=state)

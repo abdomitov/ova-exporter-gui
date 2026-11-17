@@ -1,0 +1,60 @@
+name: macOS build
+# Tests and builds the Intel macOS app and disk image. Runs on pull requests and feature
+# branches, and is called by CI/CD for every new release. The .dmg is kept as a run artifact.
+on:
+  pull_request:
+  push:
+    branches: ['ci/**', 'feature/**', 'fix/**']
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: macos-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  macos:
+    name: macOS Intel app and disk image
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+      - name: Install pinned Python build dependencies
+        run: python -m pip install -r requirements-build.txt
+      - name: Run the offline tests on macOS
+        timeout-minutes: 15
+        run: python tools/offline_tests.py
+      - name: Check the fake-data UI on macOS
+        run: python tools/preview_ui.py --check
+      - name: Build the app and disk image
+        env:
+          PYTHON: python
+        run: tools/build_macos.sh
+      - name: Check the frozen app and a drag-to-folder install from the disk image
+        env:
+          PYTHON: python
+        run: tools/ci_macos_check.sh
+      - name: Verify files and write the macOS manifest
+        run: python tools/release_artifacts.py verify-macos
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-release-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/*-macOS-Intel.dmg
+            dist/*-macOS-Intel.dmg.sha256
+            dist/macos-manifest.json
+      - name: Upload macOS diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-reports-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: ignore
+          path: artifacts/ci/

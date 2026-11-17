@@ -19,6 +19,23 @@ from updates import GitHubRedirect, UpdateClient, safe_url, select_release
 from vsphere import VSphere, probe
 
 
+WINDOWS_UPDATER = []
+
+
+def setUpModule():
+    """These tests cover the Windows installer updater. On macOS the app links to the release page instead."""
+    for target, value in (('updates.installer_filename', lambda version: f'OVA-Exporter-GUI-{version}-Windows-x64-Setup.exe'),
+                          ('update_ui.is_mac', lambda: False), ('update_ui.platform_label', lambda: 'Windows')):
+        patcher = patch(target, value)
+        patcher.start()
+        WINDOWS_UPDATER.append(patcher)
+
+
+def tearDownModule():
+    while WINDOWS_UPDATER:
+        WINDOWS_UPDATER.pop().stop()
+
+
 class TrustSecurityTests(unittest.TestCase):
     def test_certificate_prompts_default_to_decline_and_do_not_start_login(self):
         for saved in (None, ':'.join(['AA'] * 32)):

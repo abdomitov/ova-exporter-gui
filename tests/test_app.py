@@ -165,7 +165,7 @@ class Tests(unittest.TestCase):
         from pathlib import Path
         expected = Path('C:/missing-user-selection/ovftool.exe')
         with patch.dict('os.environ', {'OVFTOOL_PATH': '"'+str(expected)+'"'}), \
-                patch('tool_paths.shutil.which') as search, \
+                patch('platform_support.shutil.which') as search, \
                 patch.object(Path,'is_file',side_effect=AssertionError('Unexpected fallback search')):
             self.assertEqual(find_ovftool(Path('other-installation')),expected)
             search.assert_not_called()

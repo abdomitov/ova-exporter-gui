@@ -10,6 +10,7 @@ from tkinter import messagebox, ttk
 import webbrowser
 
 from metadata import VERSION
+from platform_support import is_mac, platform_label
 from updates import UpdateClient, UpdatePreferences, verify_installer
 
 
@@ -95,8 +96,8 @@ class UpdateUI:
                 return  # Offline startup must not interrupt the export workflow.
             if release is None:
                 if manual:
-                    self.app.caption.set('No newer Windows installer is available.')
-                    messagebox.showinfo('No update available', 'You are using version ' + VERSION + '. No newer Windows installer is published.', parent=self.root)
+                    self.app.caption.set(f'No newer {platform_label()} release is available.')
+                    messagebox.showinfo('No update available', 'You are using version ' + VERSION + f'. No newer {platform_label()} release is published.', parent=self.root)
                 return
             self.release = release
             self.show_offer()
@@ -148,19 +149,30 @@ class UpdateUI:
         ttk.Label(frame, text=f'Version {release.version} is available', style='Title.TLabel').pack(anchor='w')
         ttk.Label(frame, text=f'Installed: {VERSION}' + (' · New release: Windows preview' if release.preview else ''),
                   style='Muted.TLabel').pack(anchor='w', pady=(6, 10))
-        ttk.Label(frame, text=('Update downloads and verifies the installer, applies the upgrade '
+        if is_mac():
+            ttk.Label(frame, text='Download the new disk image from the release page, then drag OVA Exporter GUI '
+                      'into Applications to replace this version. Compare its SHA-256 with the .sha256 file. '
+                      'VMware OVF Tool is installed and updated separately.', wraplength=490).pack(anchor='w')
+        else:
+            ttk.Label(frame, text=('Update downloads and verifies the installer, applies the upgrade '
                   'with a progress window, and reopens the app. Your existing folder and '
-                  'shortcut choices are retained. ' if installed_app_directory() else
-                  'Download the app installer from this project’s GitHub release. ') +
-                  'Its SHA-256 checksum is checked before installation. The installer is unsigned. '
-                  'VMware OVF Tool is installed and updated separately.', wraplength=490).pack(anchor='w')
-        ttk.Label(frame, text='Installation is available after all queued and active export tasks finish.',
-                  wraplength=490, style='Warning.TLabel').pack(anchor='w', pady=(10, 12))
+                      'shortcut choices are retained. ' if installed_app_directory() else
+                      'Download the app installer from this project’s GitHub release. ') +
+                      'Its SHA-256 checksum is checked before installation. The installer is unsigned. '
+                      'VMware OVF Tool is installed and updated separately.', wraplength=490).pack(anchor='w')
+            ttk.Label(frame, text='Installation is available after all queued and active export tasks finish.',
+                      wraplength=490, style='Warning.TLabel').pack(anchor='w', pady=(10, 12))
         ttk.Button(frame, text='View release notes', command=lambda: webbrowser.open(release.url),
                    style='Quiet.TButton').pack(anchor='w', pady=(0, 14))
         buttons = ttk.Frame(frame)
         buttons.pack(fill='x')
-        update = ttk.Button(buttons, text='Update', style='Accent.TButton', command=lambda: self.download(window))
+        if is_mac():
+            def open_page():
+                webbrowser.open(release.url)
+                window.destroy()
+            update = ttk.Button(buttons, text='Open download page', style='Accent.TButton', command=open_page)
+        else:
+            update = ttk.Button(buttons, text='Update', style='Accent.TButton', command=lambda: self.download(window))
         update.pack(side='left')
         def choose(skip=False):
             if skip:

@@ -37,3 +37,10 @@ Nothing in this repository, and no trick on the user's PC, can honestly "bypass"
 - Compare the installer's SHA-256 with the value on the release page.
 - Click **More info**, then **Run anyway**.
 - Organizations can allow the file through their endpoint-management tool.
+
+## macOS
+
+The macOS app is ad-hoc signed but not notarized, so Gatekeeper asks once before the first launch
+(System Settings, Privacy & Security, Open Anyway). Removing that step needs an Apple Developer
+Program membership (99 USD per year), a Developer ID Application certificate and notarization with
+`notarytool` in the macOS build job. SignPath does not cover macOS.

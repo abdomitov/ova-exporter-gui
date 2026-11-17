@@ -1,0 +1,13 @@
+OVA Exporter GUI for macOS (Intel)
+
+1. Drag "OVA Exporter GUI" onto the Applications folder.
+2. Open Applications and double-click the app.
+3. The app is not notarized by Apple yet, so macOS blocks the first launch:
+   - macOS 15 Sequoia and later: click Done, open System Settings, Privacy & Security,
+     scroll down and click "Open Anyway" next to OVA Exporter GUI, then confirm.
+   - macOS 14 and earlier: Control-click the app, choose Open, then click Open.
+   Compare the disk image's SHA-256 with the .sha256 file on the release page first.
+4. Install VMware OVF Tool for macOS from Broadcom separately. The app finds it in
+   /Applications/VMware OVF Tool, or click "Locate ovftool" in Settings.
+
+Settings are encrypted with a key kept in your login Keychain. Passwords are never saved.
