@@ -1,7 +1,7 @@
 name: Windows offline tests
 on:
   push:
-    branches: [main, 'ci/**', 'feature/**', 'fix/**']
+    branches: ['ci/**', 'feature/**', 'fix/**']
   pull_request:
   workflow_dispatch:
 permissions:

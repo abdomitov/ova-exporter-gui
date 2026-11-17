@@ -1,6 +1,8 @@
-"""Validate bounded, allowlisted release files; optionally create a new draft.
+"""Decide whether a push is a new version, and publish it only after every build check passed.
 
-This tool never publishes a release, replaces assets or changes a release tag.
+Actions: ``plan`` (is this a new version?), ``verify-build`` (check the built files and write the
+manifest) and ``publish`` (create the public release from those exact files). This tool never
+replaces assets, moves a tag or overwrites an existing release.
 """
 import argparse
 import hashlib
@@ -11,7 +13,6 @@ import re
 import ssl
 import subprocess
 import sys
-import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -106,109 +107,135 @@ def verify_build():
     print('PASS: exact release files, source allowlist and required build reports verified.')
 
 
-def create_draft(directory):
-    if (os.environ.get('GITHUB_ACTIONS') != 'true'
-            or os.environ.get('GITHUB_EVENT_NAME') != 'workflow_dispatch'
-            or os.environ.get('GITHUB_REF') != 'refs/heads/main'):
-        raise RuntimeError('Draft creation requires an explicit main-branch workflow dispatch.')
-    directory = Path(directory)
-    manifest = json.loads((directory / 'build-manifest.json').read_text())
-    if (manifest.get('version') != VERSION or manifest.get('commit') != os.environ.get('GITHUB_SHA')
-            or manifest.get('repository') != os.environ.get('GITHUB_REPOSITORY')):
-        raise ValueError('Build manifest does not belong to the selected source commit.')
-    if manifest.get('files') != verify_files(directory, VERSION):
-        raise ValueError('Downloaded artifact files differ from the build manifest.')
-    verify_source(directory / f'ova-exporter-gui-{VERSION}-source.zip', VERSION)
-    notes = directory / 'draft-notes.md'
-    notes.write_text(f'## Release candidate {VERSION}\n\n'
-                     f'Built from `{manifest["commit"]}` by [GitHub Actions]('
-                     f'https://github.com/{manifest["repository"]}/actions/runs/{manifest["run_id"]}).\n\n'
-                     'Draft only: review user-facing changes, installer behavior and these exact checksums '
-                     'before publishing. Publishing makes this version discoverable to installed updaters, '
-                     'including when marked prerelease. The installer is unsigned; no live VMware testing '
-                     'or signing certification is implied. Add the actual release changes before publication.\n', encoding='utf-8')
-    command = ['gh', 'release', 'create', 'v' + VERSION, '--repo', manifest['repository'],
-               '--target', manifest['commit'], '--draft', '--prerelease', '--title',
-               f'v{VERSION} — Windows preview candidate', '--notes-file', str(notes),
-               *(str(directory / name) for name in expected_files(VERSION)),
-               str(directory / 'build-manifest.json')]
-    subprocess.run(command, check=True)  # Existing versions fail; never use upload --clobber.
+def parse_version(text):
+    match = re.fullmatch(r'v?(\d{1,5})\.(\d{1,5})\.(\d{1,5})', text or '')
+    return tuple(int(part) for part in match.groups()) if match else None
 
 
-def validate_publish_choice(tag, commit, confirmed):
-    if (confirmed != 'true' or tag != 'v' + VERSION
-            or not re.fullmatch('[0-9a-f]{40}', commit or '')):
-        raise ValueError('Publishing requires explicit confirmation, the current app tag and an exact commit.')
+def decide_release(version, tags):
+    """Return ``(should_release, reason, previous_tag)`` for the app version in this checkout."""
+    wanted = parse_version(version)
+    if wanted is None:
+        raise ValueError('The app version must contain three numeric components.')
+    known = {tag: parse_version(tag) for tag in tags if parse_version(tag)}
+    previous = max(known, key=known.get, default='')
+    if 'v' + version in known:
+        return False, f'v{version} is already released; this push only runs the tests.', previous
+    if previous and wanted < known[previous]:
+        raise ValueError(f'Version {version} is lower than the existing {previous}. Raise VERSION before merging.')
+    return True, f'v{version} is new (previous: {previous or "none"}).', previous
 
 
-def reviewed_draft(rows, tag, commit):
-    """Drafts require the authenticated release list, not the published-tag API."""
-    matches = [row for row in rows if isinstance(row, dict) and row.get('tag_name') == tag] if isinstance(rows, list) else []
-    if (len(matches) != 1 or matches[0].get('draft') is not True
-            or matches[0].get('target_commitish') != commit):
-        raise ValueError('This must be a new draft targeting the exact reviewed commit.')
-    return matches[0]
+def gh_json(*args):
+    return json.loads(subprocess.check_output(['gh', 'api', *args], text=True))
 
 
-def publish_reviewed():
-    if (os.environ.get('GITHUB_ACTIONS') != 'true'
-            or os.environ.get('GITHUB_EVENT_NAME') != 'workflow_dispatch'
-            or os.environ.get('GITHUB_REF') != 'refs/heads/main'):
-        raise RuntimeError('Publishing requires an explicit main-branch workflow dispatch.')
-    tag = os.environ.get('OVA_RELEASE_TAG', '')
-    commit = os.environ.get('OVA_RELEASE_COMMIT', '')
-    validate_publish_choice(tag, commit, os.environ.get('OVA_CONFIRM_PUBLISH'))
-    if commit != os.environ['GITHUB_SHA']:
-        raise ValueError('The reviewed candidate is not the selected main-branch commit. Rebuild/review it.')
+def existing_tags(repository):
+    refs = subprocess.check_output(['gh', 'api', '--paginate', f'repos/{repository}/git/matching-refs/tags/v',
+                                    '--jq', '.[].ref'], text=True).split()
+    tags = {ref.removeprefix('refs/tags/') for ref in refs}
+    # Drafts have no tag yet, but they still reserve their version.
+    tags |= {row['tag_name'] for row in gh_json(f'repos/{repository}/releases?per_page=100')}
+    return sorted(tags)
+
+
+def plan():
+    """Write ``release``, ``version``, ``tag`` and ``previous`` for later workflow jobs."""
     repository = os.environ['GITHUB_REPOSITORY']
-    def api(path):
-        return json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/{path}'], text=True))
-    if api('git/ref/heads/main')['object']['sha'] != commit:
-        raise ValueError('Main moved after this workflow started. Rebuild/review the newer source.')
-    # GET releases/tags/{tag} does not find an unpublished draft without a tag.
-    # Fail closed if the exact draft is not among the 100 most recent releases.
-    reviewed_draft(api('releases?per_page=100'), tag, commit)
-    directory = Path(tempfile.mkdtemp(prefix='ova-reviewed-release-', dir=os.environ['RUNNER_TEMP']))
-    command = ['gh', 'release', 'download', tag, '--repo', repository, '--dir', str(directory)]
-    for name in (*expected_files(VERSION), 'build-manifest.json'):
-        command.extend(['--pattern', name])
-    subprocess.run(command, check=True)
+    release, reason, previous = decide_release(VERSION, existing_tags(repository))
+    print(reason)
+    lines = [f'release={"true" if release else "false"}', f'version={VERSION}',
+             f'tag=v{VERSION}', f'previous={previous}']
+    output = os.environ.get('GITHUB_OUTPUT')
+    if output:
+        with open(output, 'a', encoding='utf-8') as stream:
+            stream.write('\n'.join(lines) + '\n')
+        summary = os.environ.get('GITHUB_STEP_SUMMARY')
+        if summary:
+            with open(summary, 'a', encoding='utf-8') as stream:
+                stream.write(f'\n### Release plan\n\n{reason}\n')
+
+
+class Superseded(Exception):
+    """Not an error: another run or a newer commit owns this release."""
+
+
+def release_notes(repository, tag, commit, previous, manifest):
+    header = (f'Built from `{commit}` by [GitHub Actions](https://github.com/{repository}/actions/runs/'
+              f'{manifest["run_id"]}).\n\n'
+              'Checked before publishing: the test suite on Python 3.10 and 3.14, the frozen app self-test, '
+              'and fresh install, upgrade, reopen and uninstall on a clean Windows runner.\n\n'
+              'The installer is not code-signed yet, so Windows SmartScreen may show a warning; compare the '
+              'SHA-256 in the `.sha256` file before choosing **Run anyway**. Live VMware export and '
+              'cancellation are not covered by automated tests.\n\n')
+    try:
+        command = ['repos/' + repository + '/releases/generate-notes', '-X', 'POST',
+                   '-f', 'tag_name=' + tag, '-f', 'target_commitish=' + commit]
+        if previous:
+            command += ['-f', 'previous_tag_name=' + previous]
+        generated = gh_json(*command).get('body', '')
+    except (subprocess.CalledProcessError, ValueError, OSError):
+        generated = ''
+    return header + (generated or 'See the commit history for changes since the previous release.') + '\n'
+
+
+def publish(directory):
+    """Create the public release for this exact commit. Runs only in the main-branch pipeline."""
+    if (os.environ.get('GITHUB_ACTIONS') != 'true'
+            or os.environ.get('GITHUB_EVENT_NAME') not in ('push', 'workflow_dispatch')
+            or os.environ.get('GITHUB_REF') != 'refs/heads/main'):
+        raise RuntimeError('Publishing is limited to the main-branch pipeline.')
+    directory = Path(directory)
+    repository = os.environ['GITHUB_REPOSITORY']
+    commit = os.environ.get('GITHUB_SHA', '')
+    tag = 'v' + VERSION
+    if not re.fullmatch('[0-9a-f]{40}', commit):
+        raise ValueError('Missing exact GitHub build commit.')
     manifest = json.loads((directory / 'build-manifest.json').read_text())
-    if (manifest.get('commit') != commit or manifest.get('version') != VERSION
+    if (manifest.get('version') != VERSION or manifest.get('commit') != commit
             or manifest.get('repository') != repository
-            or manifest.get('files') != verify_files(directory, VERSION)):
-        raise ValueError('The reviewed release does not match its exact build manifest.')
+            or str(manifest.get('run_id')) != os.environ.get('GITHUB_RUN_ID')):
+        raise ValueError('The build manifest does not belong to this commit and workflow run.')
+    if manifest.get('files') != verify_files(directory, VERSION):
+        raise ValueError('Downloaded files differ from the build manifest.')
     verify_source(directory / f'ova-exporter-gui-{VERSION}-source.zip', VERSION)
     checks = manifest.get('checks', {})
     native = checks.get('installer', {})
-    if checks.get('frozen') != 'passed' or checks.get('source') != 'passed':
-        raise ValueError('Required build evidence is missing.')
-    if any(native.get(name) != 'passed' for name in
-           ('fresh_install', 'fresh_launch_self_test', 'fresh_uninstall',
-            'parent_exit_wait', 'upgrade', 'reopen', 'uninstall')):
-        raise ValueError('Installer validation did not pass.')
-    run_id = str(manifest.get('run_id', ''))
-    if not run_id.isdigit():
-        raise ValueError('Invalid build run identity.')
-    run = api('actions/runs/' + run_id)
-    if (run.get('conclusion') != 'success' or run.get('head_sha') != commit
-            or run.get('path') != '.github/workflows/release-build.yml'):
-        raise ValueError('The referenced release build did not succeed for this commit.')
-    # Recheck immediately before the only mutation. No --latest/asset replacement,
-    # tag movement or version change is performed by the publish workflow.
-    if api('git/ref/heads/main')['object']['sha'] != commit:
-        raise ValueError('Main changed during review validation; refusing to publish.')
-    subprocess.run(['gh', 'release', 'edit', tag, '--repo', repository, '--draft=false'], check=True)
+    if checks.get('frozen') != 'passed' or checks.get('source') != 'passed' or any(
+            native.get(name) != 'passed' for name in
+            ('fresh_install', 'fresh_launch_self_test', 'fresh_uninstall',
+             'parent_exit_wait', 'upgrade', 'reopen', 'uninstall')):
+        raise ValueError('Required build evidence is missing or did not pass.')
+    tags = existing_tags(repository)
+    release, reason, previous = decide_release(VERSION, tags)
+    if not release:
+        raise Superseded(reason)
+    if gh_json(f'repos/{repository}/git/ref/heads/main')['object']['sha'] != commit:
+        raise Superseded('Main has a newer commit; its own pipeline run will publish if needed.')
+    notes = directory / 'release-notes.md'
+    notes.write_text(release_notes(repository, tag, commit, previous, manifest), encoding='utf-8')
+    subprocess.run(['gh', 'release', 'create', tag, '--repo', repository, '--target', commit,
+                    '--title', f'v{VERSION}', '--notes-file', str(notes),
+                    *(str(directory / name) for name in expected_files(VERSION)),
+                    str(directory / 'build-manifest.json')], check=True)  # Never --clobber.
+    row = gh_json(f'repos/{repository}/releases/tags/{tag}')
+    names = {asset['name'] for asset in row.get('assets', [])}
+    if row.get('draft') or names != {*expected_files(VERSION), 'build-manifest.json'}:
+        raise ValueError('The published release does not contain exactly the expected files.')
+    print(f'Published {tag}: {row.get("html_url", "")}')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('verify-build', 'create-draft', 'publish-reviewed'))
+    parser.add_argument('action', choices=('plan', 'verify-build', 'publish'))
     parser.add_argument('--directory', type=Path, default=ROOT / 'dist')
     options = parser.parse_args()
-    if options.action == 'verify-build':
+    if options.action == 'plan':
+        plan()
+    elif options.action == 'verify-build':
         verify_build()
-    elif options.action == 'create-draft':
-        create_draft(options.directory)
     else:
-        publish_reviewed()
+        try:
+            publish(options.directory)
+        except Superseded as reason:
+            print('Nothing published:', reason)

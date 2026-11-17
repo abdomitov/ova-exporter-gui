@@ -27,7 +27,7 @@ Nothing in this repository, and no trick on the user's PC, can honestly "bypass"
 
 1. Apply to [SignPath Foundation](https://signpath.org/) for open-source signing, or buy an OV certificate.
 2. Keep the signing key in the signing service or a hardware token, never in the repository.
-3. Add a signing step to `release-build.yml` after the installer is built, before the checksum is written.
+3. Add a signing step to the `build` job of `release.yml` after the installer is built, before the checksum is written.
    The updater already verifies SHA-256 and the GitHub asset digest, so signing the final file keeps
    those checks valid.
 4. Keep signing with the same identity for every release so reputation carries forward.

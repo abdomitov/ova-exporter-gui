@@ -1,24 +1,38 @@
 # Publishing app updates
 
-## Automated delivery path
+## How a release happens (automatic)
 
-Use **Actions → Build Windows release candidate → Run workflow** on `main`.
-The default `create_draft=false` runs the tests/build/installer checks and uploads
-seven-day artifacts without creating or publishing an app update. For a reviewed
-new app version, use `create_draft=true` to prepare a draft after all checks pass.
-Existing versions are never overwritten.
+You do not run workflows or copy commit hashes. Releasing is one change:
 
-After reviewing that draft and its exact build commit, **Publish reviewed release**
-can publish it only with the matching tag, current-main commit and explicit
-`confirm_publish=true`. It rechecks the source/files, build manifest and successful
-build run. This is a manual approval boundary; nothing auto-publishes on a push.
-Draft lookup uses the authenticated release list and requires an exact tag,
-draft flag and target commit. If the draft is not among the 100 most recent
-releases, publication fails closed. Version 2.3.5 used the documented manual
-path after the old published-tag lookup returned 404; its build and installer
-checks passed. The lookup regression is covered by offline tests.
-See [the DevOps learning path](DEVOPS_PATH.md) for commands, scope and downsides.
-The manual commands below remain useful for understanding and recovery.
+```powershell
+python tools/bump_version.py 2.5.0     # edits src/metadata.py and packaging/windows.iss together
+git checkout -b release/2.5.0
+git commit -am "Release 2.5.0"
+git push -u origin release/2.5.0       # open a pull request; the tests run on it
+```
+
+Merge the pull request. The **CI/CD** workflow (`.github/workflows/release.yml`) then runs on `main`:
+
+1. **Is this a new version?** It compares `VERSION` with the existing tags. An already released
+   version only runs the tests; a version lower than the newest release fails loudly.
+2. **Tests** on Python 3.10 and 3.14, plus the fake-data UI check.
+3. **Build** (new versions only): dependency audit, app, installer and runtime licenses, the frozen
+   app self-test, and a real install, upgrade, reopen and uninstall on a fresh Windows runner.
+4. **Publish**: it re-verifies the exact files against the build manifest (same commit, same run,
+   every check passed, source archive allowlisted), confirms `main` has not moved and the tag does
+   not exist, then creates the public release `vX.Y.Z` with the installer, source ZIP, checksums,
+   manifest and generated notes. It never replaces files or moves a tag.
+
+If any step fails, nothing is published. Fix it, push again, and the next run retries. To retry
+without a new commit, use **Actions, CI/CD, Run workflow** on `main`.
+
+Installed apps then see the release on their next startup check. Publishing is visible to every
+user with update checks enabled, so the merge to `main` is the approval step: protect `main`
+with required pull requests and checks (Settings, Branches) so that only reviewed, tested code
+can reach it.
+
+Before relying on this for a risky change, the old safety rule still applies: tests use fake VMware
+clients, so a change to export or cancellation behavior needs a manual check in a disposable lab.
 
 ## How delivery works
 
@@ -64,9 +78,9 @@ python tools/package_source.py
 5. Commit and push the reviewed changes, following any required pull-request
    rules, and wait for the Python 3.10/3.14 GitHub checks to pass.
 
-## Upload and publish
+## Manual publishing (recovery only)
 
-From the tested source checkout, with GitHub CLI authenticated:
+The pipeline above is the normal path. If GitHub Actions is unavailable, from a tested source checkout, with GitHub CLI authenticated:
 
 ```powershell
 $releaseVersion = (python -c 'import sys; sys.path.insert(0,"src"); from metadata import VERSION; print(VERSION)').Trim()
@@ -95,7 +109,7 @@ gh release edit $releaseTag --repo abdomitov/ova-exporter-gui --draft=false
 
 All users with update checks enabled can discover this release through GitHub.
 This is a client check, not a server push: automatic checking happens once at
-startup. An app already open must use **Updates → Check for updates…** or restart.
+startup. An app already open must use **Settings → Check for updates** or restart.
 Automatic checks can be disabled, deferred for a day or skip a particular version.
 A manual check overrides the reminder/skip choices. Offline users can still export;
 GitHub access is needed to check and download updates.
@@ -105,7 +119,7 @@ GitHub access is needed to check and download updates.
 Keep an older version installed on a test PC and finish its export tasks first.
 After publishing the newer release:
 
-1. Open **Updates → Check for updates…** in the older app. Confirm both versions
+1. Open **Settings → Check for updates** in the older app. Confirm both versions
    in the prompt. Do not alter the installed files to fake an older version.
 2. In an installed 2.3.2 or later app, choose **Update**. It downloads the asset,
    verifies size/checksum, installs with a progress window when idle, and reopens.

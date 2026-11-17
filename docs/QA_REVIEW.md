@@ -66,7 +66,7 @@ Windows application and installer, runs the frozen fake-UI check, and tests real
 installation, upgrade, parent-exit waiting, reopening and uninstall on a fresh
 GitHub-hosted Windows runner. The installation test refuses local and self-hosted
 execution. Its current run and exact source commit are available in
-[GitHub Actions](https://github.com/abdomitov/ova-exporter-gui/actions/workflows/release-build.yml).
+[GitHub Actions](https://github.com/abdomitov/ova-exporter-gui/actions/workflows/release.yml).
 This local review alone does not establish the result of that separate run.
 
 Source archives are allowlisted and checked against the checkout, with CRC,
