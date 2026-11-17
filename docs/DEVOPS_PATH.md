@@ -75,7 +75,10 @@ Replace `RUN_ID` with the actual numeric run ID. The jobs:
    and uninstalls, then installs the pinned public 2.3.1 baseline and runs the real update, checking parent-exit
    waiting, the replaced app and reopening. It writes `build-manifest.json` with the commit, run and runtime
    versions. No VMware credentials or servers are used, and local or self-hosted runners are refused.
-4. **publish**: the only job with `contents: write`. It checks the manifest against this exact commit and run,
+4. **build-macos** (new versions only): calls `macos.yml`, which runs the tests on an Intel Mac, builds the
+   `.app` and `.dmg` with `tools/build_macos.sh`, launches the frozen app, installs it from the mounted
+   disk image and writes `macos-manifest.json`.
+5. **publish**: the only job with `contents: write`. It checks the manifest against this exact commit and run,
    re-verifies the files and source archive, confirms `main` and the tag state, and creates the public release.
    If a newer commit has landed on `main`, it publishes nothing and lets that commit's own run decide.
 
