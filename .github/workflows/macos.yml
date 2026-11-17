@@ -27,6 +27,7 @@ jobs:
       - name: Install pinned Python build dependencies
         run: python -m pip install -r requirements-build.txt
       - name: Run the offline tests on macOS
+        timeout-minutes: 15
         run: python tools/offline_tests.py
       - name: Check the fake-data UI on macOS
         run: python tools/preview_ui.py --check

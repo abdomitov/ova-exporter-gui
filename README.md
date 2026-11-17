@@ -4,16 +4,17 @@
 
 # OVA Exporter GUI
 
-**Export VMware virtual machines to OVA from a calm, single-window Windows app.**<br>
+**Export VMware virtual machines to OVA from a calm, single-window app for Windows and macOS.**<br>
 A graphical front end for VMware OVF Tool, with checksum verification built in.
 
 [![Windows tests](https://github.com/abdomitov/ova-exporter-gui/actions/workflows/offline-tests.yml/badge.svg)](https://github.com/abdomitov/ova-exporter-gui/actions/workflows/offline-tests.yml)
 [![Latest release](https://img.shields.io/github/v/release/abdomitov/ova-exporter-gui?include_prereleases&label=release)](https://github.com/abdomitov/ova-exporter-gui/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3257f5.svg)](LICENSE)
-![Platform: Windows 10/11 x64](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-141b2e)
+![Platforms: Windows 10/11 x64 and macOS Intel](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20Intel-141b2e)
+[![macOS build](https://github.com/abdomitov/ova-exporter-gui/actions/workflows/macos.yml/badge.svg)](https://github.com/abdomitov/ova-exporter-gui/actions/workflows/macos.yml)
 
 **[Download the installer](https://github.com/abdomitov/ova-exporter-gui/releases/latest)** ·
-[Install guide](#install) · [Try it without VMware](#try-it-without-vmware) · [Docs](docs/ARCHITECTURE.md)
+[Install on Windows](#install) · [Install on macOS](#install-on-macos) · [Try it without VMware](#try-it-without-vmware) · [Docs](docs/ARCHITECTURE.md)
 
 <br>
 
@@ -95,12 +96,36 @@ SmartScreen trusts a file only through a valid signature plus download history. 
 is in [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md). Until then, organizations can deploy the installer
 through their own software distribution, where an administrator allows the file.
 
+## Install on macOS
+
+For Intel Macs (2019 MacBook Pro and similar) running macOS 10.13 or later. Apple Silicon Macs can run it
+through Rosetta 2.
+
+1. From the [latest release](https://github.com/abdomitov/ova-exporter-gui/releases/latest), download
+   `OVA-Exporter-GUI-<version>-macOS-Intel.dmg`. Check it in Terminal:
+   `shasum -a 256 ~/Downloads/OVA-Exporter-GUI-*-macOS-Intel.dmg` and compare with the `.sha256` file.
+2. Open the disk image and drag **OVA Exporter GUI** onto **Applications**.
+3. The app is not notarized by Apple yet, so macOS blocks the first launch once:
+   - **macOS 15 Sequoia or later:** double-click the app, click **Done**, then open **System Settings,
+     Privacy & Security**, scroll down and click **Open Anyway**, then confirm.
+   - **macOS 14 or earlier:** Control-click the app, choose **Open**, then click **Open**.
+4. Download **OVF Tool for macOS** from [Broadcom](https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/)
+   and unzip it into `/Applications/VMware OVF Tool`, or anywhere and click **Locate ovftool** in **Settings**.
+   If the newest OVF Tool does not start on your Intel Mac, use 4.6.x, which ships an Intel build.
+
+On macOS, shortcuts work with **Command** as well as Control, and **Open folder** shows the export in Finder.
+Saved connection hints are encrypted with a key kept in your login Keychain. App updates open the release
+page; drag the new version into Applications to replace the old one.
+
+To run from source instead, install Python 3.10+ with Tkinter (python.org, or MacPorts:
+`sudo port install python312 py312-tkinter`) and double-click **Start OVA Exporter.command**.
+
 ## Try it without VMware
 
 To explore the interface with no VMware server, OVF Tool or network, download the source, install
 Python 3.10 or newer, and double-click **Try the new UI.cmd**. It opens the app against a simulated
 server: connect, pick a VM, queue it, watch it run and cancel it. Nothing is sent anywhere and no
-files are written.
+files are written. On a Mac, double-click **Try the new UI.command** instead.
 
 ```powershell
 py -3 tools/preview_ui.py --try
@@ -134,7 +159,8 @@ to `main`, and the CI/CD workflow tests, builds, verifies and publishes the rele
 
 ## Requirements
 
-- Windows 10/11 x64 is the target platform. Fresh install, upgrade and uninstall passed on a disposable GitHub-hosted Windows runner. Windows 10 and all end-user configurations remain unverified.
+- Windows 10/11 x64, and macOS 10.13 or later on Intel. The macOS app is built and launched from its disk image on a GitHub-hosted Intel Mac for every release; exports on a real Mac remain unverified.
+- On Windows: Fresh install, upgrade and uninstall passed on a disposable GitHub-hosted Windows runner. Windows 10 and all end-user configurations remain unverified.
 - Source users need Python 3.10 or newer with Tkinter. The Windows installer includes Python/Tk; users of that installer do not need a separate Python installation. No third-party Python packages are required to run the source app.
 - [VMware OVF Tool](https://developer.broadcom.com/tools/open-virtualization-format-ovf-tool/latest/), installed separately under its own license.
 - Access to the required VMware management and export endpoints and an account permitted to read inventory and export the chosen VM.
@@ -212,7 +238,7 @@ Queued tasks and local verification can be cancelled independently. An active-ex
 
 ## Privacy
 
-The compatible data directory remains `%LOCALAPPDATA%\OVA Exporter`:
+Settings live in `%LOCALAPPDATA%\OVA Exporter` on Windows and `~/Library/Application Support/OVA Exporter` on macOS. On macOS, "DPAPI-encrypted" below means encrypted with HMAC-SHA256 using a random key stored in the login Keychain:
 
 | File | Contents |
 | --- | --- |

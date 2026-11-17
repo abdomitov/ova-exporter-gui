@@ -56,7 +56,7 @@ class MacPlatformTests(unittest.TestCase):
             self.assertIsInstance(default_protector(), WindowsDataProtection)
 
     def test_finds_an_installed_mac_tool(self):
-        with mac(), patch('tool_paths.tool_file_exists', side_effect=lambda path: str(path).startswith('/Applications/VMware')):
+        with mac(), patch('tool_paths.tool_file_exists', side_effect=lambda path: Path(path).as_posix().startswith('/Applications/VMware')):
             self.assertEqual(find_ovftool('/app'), Path('/Applications/VMware OVF Tool/ovftool'))
 
     def test_open_folder_uses_finder_without_a_shell(self):

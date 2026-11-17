@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 from app import App
 from diagnostics import machine_error_messages
+from platform_support import tool_name
 from test_app import close_root
 from vsphere import fingerprint
 
@@ -60,7 +61,7 @@ class UITests(unittest.TestCase):
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "ovftool.exe"
+            path = Path(directory) / tool_name()
             path.write_bytes(b"not executable; fixture only")
             root = tk.Tk()
             root.withdraw()

@@ -8,3 +8,8 @@ OVA Exporter GUI - new interface
         Nothing is sent anywhere and no files are written.
 4. To use the real app with VMware OVF Tool: double-click  "Start OVA Exporter.cmd"
    (or "Start OVA Exporter.vbs" for no console window).
+
+On a Mac (Intel):
+- Install Python 3.10+ with Tkinter (python.org, or MacPorts: sudo port install python312 py312-tkinter).
+- Double-click "Try the new UI.command" for the simulated server, or "Start OVA Exporter.command" for the real app.
+- Or download the ready-made .dmg from the GitHub release page (see README, "Install on macOS").

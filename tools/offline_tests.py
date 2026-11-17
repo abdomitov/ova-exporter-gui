@@ -1,4 +1,5 @@
 """Run the regression suite with real network/process/profile access denied."""
+import faulthandler
 import socket
 import subprocess
 import sys
@@ -19,6 +20,8 @@ def denied(*args, **kwargs):
 
 
 def run():
+    # A modal dialog left open by a failing test would otherwise hang CI; print where it stopped.
+    faulthandler.dump_traceback_later(900, exit=True)
     socket.socket.connect = denied
     socket.socket.connect_ex = denied
     socket.create_connection = denied
