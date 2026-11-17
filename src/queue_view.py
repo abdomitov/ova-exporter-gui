@@ -1,10 +1,10 @@
 """Export queue: a list of tasks beside the selected task's transfer and log."""
-import os
+import subprocess
 import tkinter as tk
-import webbrowser
 from tkinter import font as tkfont
 from tkinter import ttk
 
+from platform_support import open_folder, tool_name
 from jobs import TERMINAL
 from scrolling import ScrollBody
 from task_view import TaskView
@@ -320,7 +320,7 @@ class QueueView(ttk.Frame):
         self.tool_ready = ready
         self.empty_title.configure(text='No exports yet' if ready else 'VMware OVF Tool is not set up')
         self.empty_hint.configure(text='Sign in to an ESXi host or vCenter, pick a powered-off VM and choose where to save its OVA.'
-                                  if ready else 'Exports run through VMware OVF Tool. Install it, or point this app at ovftool.exe, in Settings.')
+                                  if ready else f'Exports run through VMware OVF Tool. Install it, or point this app at {tool_name()}, in Settings.')
         self.empty_action.configure(text='New export' if ready else 'Open settings',
                                     command=self.empty_new if ready else self.empty_settings)
         self.new_button.configure(state='normal' if ready else 'disabled')
@@ -482,11 +482,8 @@ class QueueView(ttk.Frame):
             return
         folder = view.job.target.parent
         try:
-            if hasattr(os, 'startfile'):
-                os.startfile(str(folder))  # nosec B606 - opens the user's own destination folder
-            else:
-                webbrowser.open(folder.resolve().as_uri())
-        except OSError as error:
+            open_folder(folder)
+        except (OSError, subprocess.SubprocessError) as error:
             self.notify('The folder could not be opened: ' + str(error))
 
     # -- summary ---------------------------------------------------------

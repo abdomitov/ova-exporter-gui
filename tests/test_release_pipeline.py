@@ -11,8 +11,8 @@ from unittest.mock import Mock, patch
 from tools.ci_installer_check import ensure_runner
 from tools import ci_installer_check
 from tools import bump_version, release_artifacts
-from tools.release_artifacts import (Superseded, decide_release, expected_files, parse_version,
-                                     publish, verify_files, verify_source)
+from tools.release_artifacts import (MACOS_CHECKS, Superseded, decide_release, expected_files, macos_files,
+                                     parse_version, publish, release_assets, verify_files, verify_source)
 from metadata import VERSION
 from tools.runtime_licenses import license_urls, runtime_versions
 
@@ -36,7 +36,7 @@ class ReleasePipelineTests(unittest.TestCase):
             license_urls('8.6.17/../main', '8.6.16', '3.5.4')
 
     def fixture_files(self, directory):
-        for name in expected_files(VERSION)[::2]:
+        for name in (*expected_files(VERSION)[::2], macos_files(VERSION)[0]):
             path = Path(directory) / name
             path.write_bytes(b'fabricated release file, never execute')
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -106,7 +106,7 @@ class ReleasePipelineTests(unittest.TestCase):
         return dict(GITHUB_ACTIONS='true', GITHUB_EVENT_NAME='push', GITHUB_REF='refs/heads/main',
                     GITHUB_SHA='a' * 40, GITHUB_REPOSITORY='example/project', GITHUB_RUN_ID='77')
 
-    def manifest_directory(self, directory, **changes):
+    def manifest_directory(self, directory, mac_changes=None, **changes):
         self.fixture_files(directory)
         self.fixture_source = None
         manifest = dict(schema=1, version=VERSION, commit='a' * 40, repository='example/project', run_id='77',
@@ -114,8 +114,13 @@ class ReleasePipelineTests(unittest.TestCase):
                         checks=dict(frozen='passed', source='passed', installer={
                             name: 'passed' for name in ('fresh_install', 'fresh_launch_self_test', 'fresh_uninstall',
                                                         'parent_exit_wait', 'upgrade', 'reopen', 'uninstall')}))
+        mac = dict(schema=1, version=VERSION, commit='a' * 40, repository='example/project', run_id='77',
+                   files=verify_files(directory, VERSION, macos_files(VERSION)),
+                   checks=dict(frozen='passed', disk_image={name: 'passed' for name in MACOS_CHECKS}))
+        mac.update(mac_changes or {})
         manifest.update(changes)
         (Path(directory) / 'build-manifest.json').write_text(json.dumps(manifest))
+        (Path(directory) / 'macos-manifest.json').write_text(json.dumps(mac))
 
     def test_publish_is_limited_to_the_main_branch_pipeline(self):
         for values in ({'GITHUB_ACTIONS': 'false'},
@@ -163,7 +168,7 @@ class ReleasePipelineTests(unittest.TestCase):
 
     def test_publish_creates_a_public_release_from_the_exact_files_only(self):
         listed = {'draft': False, 'html_url': 'https://example.test',
-                  'assets': [dict(name=name) for name in (*expected_files(VERSION), 'build-manifest.json')]}
+                  'assets': [dict(name=name) for name in release_assets(VERSION)]}
         def api(*args):
             return {'object': {'sha': 'a' * 40}} if 'heads/main' in args[0] else listed if 'releases/tags' in args[0] else {}
         with tempfile.TemporaryDirectory() as directory, \
@@ -180,6 +185,28 @@ class ReleasePipelineTests(unittest.TestCase):
         self.assertNotIn('--clobber', command)
         self.assertEqual(command[command.index('--target') + 1], 'a' * 40)
         self.assertEqual(sum(item.endswith('.exe') for item in command), 1)
+        self.assertEqual(sum(item.endswith('.dmg') for item in command), 1)
+        self.assertEqual(sum(item.endswith('manifest.json') for item in command), 2)
+
+    def test_publish_rejects_missing_or_foreign_macos_evidence(self):
+        cases = (dict(commit='b' * 40), dict(run_id='78'),
+                 dict(checks=dict(frozen='passed', disk_image={'mounted': 'passed'})))
+        for change in cases:
+            with tempfile.TemporaryDirectory() as directory, \
+                    patch.dict(os.environ, self.publish_environment(), clear=True), \
+                    patch('tools.release_artifacts.verify_source'), \
+                    patch('tools.release_artifacts.subprocess.run') as mutate:
+                self.manifest_directory(directory, mac_changes=change)
+                with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'macOS'):
+                    publish(directory)
+                mutate.assert_not_called()
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.dict(os.environ, self.publish_environment(), clear=True), \
+                patch('tools.release_artifacts.verify_source'):
+            self.manifest_directory(directory)
+            (Path(directory) / macos_files(VERSION)[0]).write_bytes(b'swapped disk image')
+            with self.assertRaisesRegex(ValueError, 'mismatch'):
+                publish(directory)
 
     def test_release_workflow_publishes_only_from_main_with_least_privilege(self):
         text = (Path(release_artifacts.ROOT) / '.github/workflows/release.yml').read_text()

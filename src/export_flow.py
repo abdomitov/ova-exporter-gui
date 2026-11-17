@@ -13,6 +13,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from output_paths import validate_output_name
+from platform_support import shortcut_modifiers
 from vsphere import VSphere, endpoint, fingerprint, probe
 
 ROUTINE_STATUS = ('Ready', 'Connected. Select a powered-off VM.', 'Virtual machine list updated', 'Disconnected')
@@ -110,8 +111,9 @@ class ExportFlow(ttk.Frame):
             ttk.Label(form, text=label, style='Surface.TLabel').grid(row=2 + index * 2, column=0, columnspan=2, sticky='w', pady=(10, 4))
             entry = ttk.Entry(form, textvariable=variable, show='\u2022' if index == 2 else '', exportselection=False)
             entry.grid(row=3 + index * 2, column=0, columnspan=1 if index == 2 else 2, sticky='ew')
-            entry.bind('<Control-a>', self.select_all)
-            entry.bind('<Control-A>', self.select_all)
+            for modifier in shortcut_modifiers():
+                entry.bind(f'<{modifier}-a>', self.select_all)
+                entry.bind(f'<{modifier}-A>', self.select_all)
             self.login_entries.append(entry)
         self.address_entry, self.username_entry, self.password_entry = self.login_entries
         self.show_password_btn = ttk.Button(form, text='Show', command=self.toggle_password, width=6, style='Surface.TButton')

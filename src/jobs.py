@@ -10,6 +10,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from platform_support import tool_name
 from exporter import export_command, ProgressParser, TransferTracker, verify_ova
 from vsphere import fingerprint
 from diagnostics import machine_error_messages
@@ -435,7 +436,7 @@ class JobManager:
             if shutil.disk_usage(job.target.parent).free < 512 * 1024**2:
                 raise RuntimeError('Less than 512 MB remains on the destination drive.')
             if not self.tool.is_file():
-                raise RuntimeError('OVF Tool was not found. Install VMware OVF Tool from Broadcom, or set OVFTOOL_PATH to ovftool.exe and restart this app.')
+                raise RuntimeError(f'OVF Tool was not found. Install VMware OVF Tool from Broadcom, or set OVFTOOL_PATH to {tool_name()} and restart this app.')
             job.secret = job.client.clone_ticket()
             if not job.secret:
                 raise RuntimeError('The server did not issue an export ticket.')

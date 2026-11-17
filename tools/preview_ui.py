@@ -32,11 +32,13 @@ subprocess.Popen = blocked
 
 import app as application  # noqa: E402 - offline guards must be installed before app imports
 from connection_settings import ConnectionSettings  # noqa: E402
-from secure_storage import WindowsDataProtection  # noqa: E402
+from secure_storage import MacKeychainProtection, WindowsDataProtection  # noqa: E402
 
 ConnectionSettings.__init__ = blocked
 WindowsDataProtection.protect = blocked
 WindowsDataProtection.unprotect = blocked
+MacKeychainProtection.protect = blocked
+MacKeychainProtection.unprotect = blocked
 import export_flow  # noqa: E402 - apply the guards before loading application modules
 export_flow.probe = blocked
 export_flow.VSphere = blocked

@@ -10,6 +10,7 @@ from connection_settings import ConnectionSettings
 from export_flow import ExportFlow
 from jobs import JobManager
 from metadata import APP_NAME, VERSION
+from platform_support import is_mac, shortcut_modifiers, tool_name
 from project_paths import ROOT
 from queue_view import QueueView
 from scrolling import install_mousewheel
@@ -61,7 +62,7 @@ class App:
         self.tool_status = tk.StringVar()
         self.tool_ready = False
         self.tool_path = self.tool_locator(BASE, self.selected_tool)
-        self.manager = JobManager(self.tool_path or BASE / 'ovftool' / 'ovftool.exe', self.emit)
+        self.manager = JobManager(self.tool_path or BASE / 'ovftool' / tool_name(), self.emit)
 
         root.columnconfigure(1, weight=1)
         root.rowconfigure(0, weight=1)
@@ -130,12 +131,13 @@ class App:
         self.show('queue')
         self.refresh_wheel = install_mousewheel(root)
         root.protocol('WM_DELETE_WINDOW', self.close)
-        for key in ('<Control-n>', '<Control-N>'):
-            root.bind(key, lambda event: self.new_download())
-        for index, (name, _) in enumerate(VIEWS, 1):
-            root.bind(f'<Control-Key-{index}>', lambda event, name=name: self.navigate(name))
-        for key in ('<Control-f>', '<Control-F>'):
-            root.bind(key, self.flow.focus_search)
+        for modifier in shortcut_modifiers():  # Command shortcuts too on a Mac.
+            for key in (f'<{modifier}-n>', f'<{modifier}-N>'):
+                root.bind(key, lambda event: self.new_download())
+            for index, (name, _) in enumerate(VIEWS, 1):
+                root.bind(f'<{modifier}-Key-{index}>', lambda event, name=name: self.navigate(name))
+            for key in (f'<{modifier}-f>', f'<{modifier}-F>'):
+                root.bind(key, self.flow.focus_search)
         root.bind('<F5>', lambda event: self.flow.refresh() if self.current == 'new' and self.flow.step == 2 else None)
         self.timer = root.after(100, self.poll)
 
@@ -194,7 +196,7 @@ class App:
         self.tool_ready = ready
         self.tool_path = Path(path) if path else None
         if not busy:
-            self.manager.tool = self.tool_path or BASE / 'ovftool' / 'ovftool.exe'
+            self.manager.tool = self.tool_path or BASE / 'ovftool' / tool_name()
         self.tool_status.set('OVF Tool ready' if ready else 'OVF Tool missing')
         self.tool_label.configure(text='  ' + self.tool_status.get(),
                                   style='Success.RailCard.TLabel' if ready else 'Error.RailCard.TLabel')
@@ -208,14 +210,15 @@ class App:
         if self.manager.unfinished():
             messagebox.showinfo('Exports active', 'Wait for all tasks to finish before changing OVF Tool.', parent=self.root)
             return
-        chosen = filedialog.askopenfilename(parent=self.root, title='Select ovftool.exe in its installation folder',
-                    filetypes=[('VMware OVF Tool', 'ovftool.exe')],
+        name = tool_name()
+        chosen = filedialog.askopenfilename(parent=self.root, title=f'Select {name} in its installation folder',
+                    filetypes=[('VMware OVF Tool', '*')] if is_mac() else [('VMware OVF Tool', name)],
                     initialdir=str(self.tool_path.parent) if self.tool_path and self.tool_path.parent.is_dir() else None)
         if not chosen:
             return
         path = Path(chosen)
-        if path.name.casefold() != 'ovftool.exe' or not path.is_file():
-            messagebox.showerror('Invalid tool', 'Select the official ovftool.exe and leave its supporting DLLs/folders in place.', parent=self.root)
+        if path.name.casefold() != name or not path.is_file():
+            messagebox.showerror('Invalid tool', f'Select the official {name} and leave its supporting files and folders in place.', parent=self.root)
             return
         self.selected_tool = path
         self.save_tool_location(path)
@@ -242,7 +245,7 @@ class App:
             return
         if not self.refresh_tool():
             self.show('settings')
-            messagebox.showerror('VMware OVF Tool is required', 'Install VMware OVF Tool, then click Auto-detect in Settings. For a custom folder, click Locate ovftool.exe and select it. Keep its supporting files together.', parent=self.root)
+            messagebox.showerror('VMware OVF Tool is required', f'Install VMware OVF Tool, then click Auto-detect in Settings. For a custom folder, click Locate {tool_name()} and select it. Keep its supporting files together.', parent=self.root)
             return
         self.show('new')
         self.flow.show_step(self.flow.step)

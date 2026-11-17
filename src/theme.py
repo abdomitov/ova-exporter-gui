@@ -16,6 +16,7 @@ import weakref
 from tkinter import font as tkfont
 from tkinter import ttk
 
+from platform_support import is_mac
 from ui_assets import Assets, check_png, empty_png, icon_png, rounded_png, stage_png
 
 PALETTES = {
@@ -50,10 +51,11 @@ PALETTES = {
 # First installed family wins; later names cover older Windows and other systems.
 # Bahnschrift, a DIN face shipped with Windows 10 and later, sets the numerals.
 FONT_CHOICES = {
-    'display': ('Segoe UI Variable Display', 'Segoe UI', 'Inter Display', 'Inter', 'DejaVu Sans'),
-    'numeric': ('Bahnschrift', 'Segoe UI Variable Display', 'Segoe UI', 'Inter Display', 'Inter', 'DejaVu Sans'),
-    'body': ('Segoe UI Variable Text', 'Segoe UI', 'Inter', 'DejaVu Sans'),
-    'mono': ('Cascadia Mono', 'Consolas', 'DejaVu Sans Mono', 'Courier New'),
+    'display': ('Segoe UI Variable Display', 'Segoe UI', 'SF Pro Display', 'Helvetica Neue', 'Inter Display', 'Inter', 'DejaVu Sans'),
+    'numeric': ('Bahnschrift', 'DIN Alternate', 'Segoe UI Variable Display', 'Segoe UI', 'SF Pro Display',
+                'Helvetica Neue', 'Inter Display', 'Inter', 'DejaVu Sans'),
+    'body': ('Segoe UI Variable Text', 'Segoe UI', 'SF Pro Text', 'Helvetica Neue', 'Inter', 'DejaVu Sans'),
+    'mono': ('Cascadia Mono', 'Consolas', 'SF Mono', 'Menlo', 'DejaVu Sans Mono', 'Courier New'),
 }
 
 
@@ -89,7 +91,9 @@ class ThemeManager:
         return round(value * self.scale)
 
     def font(self, role='body', size=10, weight='normal'):
-        return (self.families[role], size, weight)
+        # Tk on macOS treats a point as one screen point (72 per inch), while the layout
+        # was drawn for 96 per inch; scale so text keeps its size relative to the artwork.
+        return (self.families[role], round(size * 4 / 3) if is_mac() else size, weight)
 
     def read_preference(self):
         if self.path is not None:

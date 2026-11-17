@@ -1,4 +1,4 @@
-"""Public GitHub release checks and verified, user-confirmed Windows updates.
+"""Public GitHub release checks and verified, user-confirmed updates (installed on Windows, linked on macOS).
 
 No VMware credentials, connection hints or GitHub tokens are used here.
 Checks never execute downloads; the UI separately authorizes installation.
@@ -12,6 +12,8 @@ import tempfile
 import time
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+from platform_support import installer_filename
 
 REPOSITORY = 'abdomitov/ova-exporter-gui'
 RELEASES_URL = f'https://api.github.com/repos/{REPOSITORY}/releases?per_page=30'
@@ -54,7 +56,7 @@ def select_release(rows, current, skipped=''):
             version = tag.removeprefix('v')
             if number <= current_version:
                 continue
-            filename = f'OVA-Exporter-GUI-{version}-Windows-x64-Setup.exe'
+            filename = installer_filename(version)
             prefix = f'https://github.com/{REPOSITORY}/releases/download/{tag}/'
             page = f'https://github.com/{REPOSITORY}/releases/tag/{tag}'
             assets = row['assets']
@@ -128,7 +130,7 @@ class UpdateClient:
     def download(self, release, directory, progress=lambda current, total: None):
         # Even a caller-supplied Release must belong to this repository.
         version_tuple(release.version)
-        expected_name = f'OVA-Exporter-GUI-{release.version}-Windows-x64-Setup.exe'
+        expected_name = installer_filename(release.version)
         if (release.filename != expected_name or type(release.size) is not int
                 or not 0 < release.size <= MAX_INSTALLER):
             raise ValueError('Invalid installer metadata.')

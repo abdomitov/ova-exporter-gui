@@ -1,11 +1,11 @@
 """Find a user-installed OVF Tool without redistributing VMware binaries."""
 import os
-import shutil
 import base64
 import json
 import tempfile
 from pathlib import Path
-from secure_storage import WindowsDataProtection
+from platform_support import tool_candidates
+from secure_storage import default_protector
 
 
 def tool_file_exists(path):
@@ -22,14 +22,7 @@ def find_ovftool(base, selected=None):
     configured = os.environ.get('OVFTOOL_PATH', '').strip().strip('"')
     if configured:
         return Path(configured)  # An explicit override must not select another binary.
-    candidates = []
-    candidates.append(Path(base) / 'ovftool' / 'ovftool.exe')
-    for variable in ('ProgramFiles', 'ProgramFiles(x86)'):
-        if os.environ.get(variable):
-            candidates.append(Path(os.environ[variable]) / 'VMware' / 'VMware OVF Tool' / 'ovftool.exe')
-    on_path = shutil.which('ovftool.exe')
-    if on_path:
-        candidates.append(Path(on_path))
+    candidates = tool_candidates(base)
     return next((path for path in candidates if tool_file_exists(path)), None)
 
 
@@ -37,7 +30,7 @@ class ToolLocation:
     """A custom local executable path; encrypted separately from connection data."""
     def __init__(self,directory,protector=None):
         self.path=Path(directory)/'tool_location.json'
-        self.protector=protector if protector is not None else WindowsDataProtection()
+        self.protector=protector if protector is not None else default_protector()
 
     def read(self):
         try:
