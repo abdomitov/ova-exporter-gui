@@ -68,6 +68,14 @@ class MacPlatformTests(unittest.TestCase):
         self.assertEqual(command, ['/usr/bin/open', '--', '/Users/me/Exports'])
         self.assertNotIn('shell', run.call_args.kwargs)
 
+    def test_windows_opens_folders_with_explorer(self):
+        with patch.object(sys, 'platform', 'win32'), \
+                patch.object(platform_support.os, 'startfile', create=True) as startfile, \
+                patch('platform_support.subprocess.run') as run:
+            platform_support.open_folder(Path('C:/Exports'))
+        startfile.assert_called_once_with(str(Path('C:/Exports')))
+        run.assert_not_called()
+
     def test_mac_updater_only_offers_releases_with_a_mac_disk_image(self):
         def row(version, names):
             prefix = f'https://github.com/{REPOSITORY}/releases/download/v{version}/'
@@ -85,7 +93,8 @@ class MacPlatformTests(unittest.TestCase):
             release = select_release([windows_only, both], '1.0.0')
         self.assertEqual(release.version, '8.0.0')
         self.assertEqual(release.filename, 'OVA-Exporter-GUI-8.0.0-macOS-Intel.dmg')
-        self.assertEqual(select_release([windows_only, both], '1.0.0').version, '9.0.0')
+        with patch.object(sys, 'platform', 'win32'):
+            self.assertEqual(select_release([windows_only, both], '1.0.0').version, '9.0.0')
 
 
 class KeychainProtectionTests(unittest.TestCase):

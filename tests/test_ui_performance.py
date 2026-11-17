@@ -353,9 +353,9 @@ class ResponsiveUITests(unittest.TestCase):
         queue.copy_button.invoke()
         self.assertEqual(self.root.clipboard_get(),str(self.job.target))
         self.assertIn('copied',self.app.caption.get())
-        with patch('platform_support.os.startfile',create=True) as launch:
+        with patch('queue_view.open_folder') as launch:
             queue.folder_button.invoke()
-            launch.assert_called_once_with(str(self.job.target.parent))
-        with patch('platform_support.os.startfile',create=True,side_effect=OSError('fixture')):
+            launch.assert_called_once_with(self.job.target.parent)
+        with patch('queue_view.open_folder',side_effect=OSError('fixture')):
             queue.folder_button.invoke()
         self.assertIn('could not be opened',self.app.caption.get())
